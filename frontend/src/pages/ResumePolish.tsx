@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wand2, Download, ArrowLeft, Sparkles, Home } from 'lucide-react';
+import { Wand2, Download, ArrowLeft, Sparkles, Home, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
-import { MOCK_POLISH_RESULT } from '@/lib/mockData';
+import { resumeApi, PolishResponse } from '@/lib/api';
 import Typewriter from '@/components/Typewriter';
 import { cn } from '@/lib/utils';
 
 export default function ResumePolish() {
   const navigate = useNavigate();
-  const { resumeContent, uploadedFile } = useResumeStore();
+  const { resumeContent, uploadedFile, selectedIndustry } = useResumeStore();
   const [isPolishing, setIsPolishing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<PolishResponse | null>(null);
   const [activeChangeIndex, setActiveChangeIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'text' | 'file'>('text');
-  
+
   // 如果没有简历内容，使用 placeholder
   const originalContent = resumeContent || "（此处应显示您的原始简历内容...）";
-  
+
   // 生成文件预览 URL
   const [fileUrl, setFileUrl] = useState<string | null>(null);
 
@@ -30,21 +32,38 @@ export default function ResumePolish() {
   }, [uploadedFile]);
 
   useEffect(() => {
-    // 自动开始润色 (模拟)
-    const timer = setTimeout(() => {
-        setIsPolishing(true);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    const polishResume = async () => {
+      if (!resumeContent || !selectedIndustry) {
+        navigate('/upload');
+        return;
+      }
 
-  // 模拟 Changes 列表的滚动播放
+      try {
+        setIsPolishing(true);
+        setError(null);
+        const response = await resumeApi.polish({
+          content: resumeContent,
+          industryId: selectedIndustry,
+        });
+        setResult(response);
+      } catch (err: any) {
+        setError(err.response?.data?.message || '润色失败，请重试');
+        console.error('润色失败:', err);
+        setIsPolishing(false);
+      }
+    };
+
+    polishResume();
+  }, [resumeContent, selectedIndustry, navigate]);
+
+  // Changes 列表的滚动播放
   useEffect(() => {
-    if (!isPolishing || isCompleted) return;
+    if (!isPolishing || isCompleted || !result?.changes.length) return;
     const interval = setInterval(() => {
-      setActiveChangeIndex(prev => (prev + 1) % MOCK_POLISH_RESULT.changes.length);
+      setActiveChangeIndex(prev => (prev + 1) % result.changes.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, [isPolishing, isCompleted]);
+  }, [isPolishing, isCompleted, result]);
 
   const handleComplete = () => {
     setIsCompleted(true);
@@ -164,25 +183,40 @@ export default function ResumePolish() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 relative">
-            {!isPolishing && !isCompleted ? (
-               <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40">
-                 <Wand2 className="w-16 h-16 mb-4 opacity-20" />
-                 <p>等待启动...</p>
-               </div>
+            {error ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+                <p className="text-destructive mb-4">{error}</p>
+                <button
+                  onClick={() => navigate('/result')}
+                  className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg transition-all"
+                >
+                  返回分析报告
+                </button>
+              </div>
+            ) : !isPolishing && !isCompleted ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40">
+                <Wand2 className="w-16 h-16 mb-4 opacity-20" />
+                <p>等待启动...</p>
+              </div>
+            ) : result ? (
+              <Typewriter
+                text={result.polishedContent}
+                speed={5}
+                onComplete={handleComplete}
+                className="prose prose-sm max-w-none text-foreground font-mono text-sm leading-relaxed"
+              />
             ) : (
-               <Typewriter 
-                 text={MOCK_POLISH_RESULT.polishedContent} 
-                 speed={5} 
-                 onComplete={handleComplete}
-                 className="prose prose-sm max-w-none text-foreground font-mono text-sm leading-relaxed"
-               />
+              <div className="flex items-center justify-center h-full">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
             )}
           </div>
           
           {/* Floating AI Insights Panel */}
           <AnimatePresence>
-            {(isPolishing || isCompleted) && (
-              <motion.div 
+            {(isPolishing || isCompleted) && result?.changes && result.changes.length > 0 && (
+              <motion.div
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 className="absolute bottom-6 left-6 right-6 bg-popover/90 backdrop-blur-md border rounded-xl p-4 shadow-lg ring-1 ring-black/5"
@@ -196,20 +230,20 @@ export default function ResumePolish() {
                       Optimization Strategy
                     </h4>
                     <AnimatePresence mode="wait">
-                      <motion.p 
+                      <motion.p
                         key={activeChangeIndex}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         className="text-sm font-medium"
                       >
-                         {MOCK_POLISH_RESULT.changes[activeChangeIndex].text}
+                        {result.changes[activeChangeIndex].reason}
                       </motion.p>
                     </AnimatePresence>
                   </div>
                   <div className="flex gap-1 self-center">
-                    {MOCK_POLISH_RESULT.changes.map((_, idx) => (
-                      <div 
+                    {result.changes.map((_, idx) => (
+                      <div
                         key={idx}
                         className={cn(
                           "w-1.5 h-1.5 rounded-full transition-colors duration-300",

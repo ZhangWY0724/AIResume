@@ -3,26 +3,46 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, Download, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
-import { MOCK_ANALYSIS_RESULT } from '@/lib/mockData';
+import { resumeApi, AnalyzeResponse } from '@/lib/api';
 import RadarChart from '@/components/RadarChart';
 import { cn } from '@/lib/utils';
 
 export default function AnalysisResult() {
   const [loading, setLoading] = useState(true);
-  const { resumeContent } = useResumeStore();
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const { resumeContent, selectedIndustry } = useResumeStore();
   const navigate = useNavigate();
 
-  // Mock loading effect
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2500); // 2.5s loading
-    return () => clearTimeout(timer);
-  }, []);
+    const analyzeResume = async () => {
+      if (!resumeContent || !selectedIndustry) {
+        navigate('/upload');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await resumeApi.analyze({
+          content: resumeContent,
+          industryId: selectedIndustry,
+        });
+        setResult(response);
+      } catch (err: any) {
+        setError(err.response?.data?.message || '分析失败，请重试');
+        console.error('分析失败:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    analyzeResume();
+  }, [resumeContent, selectedIndustry, navigate]);
 
   if (!resumeContent && !loading) {
-     // Fallback for direct access without content
-     // In real app, redirect to upload
+    navigate('/upload');
+    return null;
   }
 
   if (loading) {
@@ -41,7 +61,25 @@ export default function AnalysisResult() {
     );
   }
 
-  const result = MOCK_ANALYSIS_RESULT;
+  if (error) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
+        <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-bold mb-2">分析失败</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <button
+          onClick={() => navigate('/upload')}
+          className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg transition-all"
+        >
+          返回重试
+        </button>
+      </div>
+    );
+  }
+
+  if (!result) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl animate-in fade-in duration-700">
@@ -85,13 +123,13 @@ export default function AnalysisResult() {
                   反映您的简历是否容易被大厂的自动筛选软件正确解析。
                 </div>
               </div>
-              <span className="font-medium">{result.ats_score}%</span>
+              <span className="font-medium">{result.atsScore}%</span>
             </div>
             <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-              <motion.div 
-                className="bg-blue-500 h-full" 
+              <motion.div
+                className="bg-blue-500 h-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${result.ats_score}%` }}
+                animate={{ width: `${result.atsScore}%` }}
                 transition={{ duration: 1, delay: 0.5 }}
               />
             </div>
@@ -124,7 +162,7 @@ export default function AnalysisResult() {
             <h3 className="font-semibold">简历亮点</h3>
           </div>
           <ul className="space-y-3">
-            {result.highlights.map((item, i) => (
+            {result.strengths.map((item, i) => (
               <li key={i} className="flex gap-2 text-sm text-muted-foreground">
                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                 {item}
@@ -140,7 +178,7 @@ export default function AnalysisResult() {
             <h3 className="font-semibold">待改进</h3>
           </div>
           <ul className="space-y-3">
-            {result.weaknesses.map((item, i) => (
+            {result.improvements.map((item, i) => (
               <li key={i} className="flex gap-2 text-sm text-muted-foreground">
                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
                 {item}
@@ -156,7 +194,7 @@ export default function AnalysisResult() {
             <h3 className="font-semibold">缺失关键词</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            {result.keywords_missing.map((keyword, i) => (
+            {result.missingKeywords.map((keyword, i) => (
               <span key={i} className="px-3 py-1 bg-blue-500/10 text-blue-600 rounded-full text-sm font-medium">
                 {keyword}
               </span>

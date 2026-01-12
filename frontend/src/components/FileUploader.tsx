@@ -4,13 +4,14 @@ import { UploadCloud, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useResumeStore } from '@/store/useResumeStore';
+import { resumeApi } from '@/lib/api';
 
 export default function FileUploader() {
   const { setResumeContent, setUploadedFile, uploadedFile } = useResumeStore();
   const [isReading, setIsReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setError(null);
     const file = acceptedFiles[0];
     if (!file) return;
@@ -18,29 +19,20 @@ export default function FileUploader() {
     setUploadedFile(file);
     setIsReading(true);
 
-    // 模拟文件读取/解析过程
-    // 在真实后端场景中，这里会调用 API 上传并解析文件
-    // 这里我们仅前端读取 TXT，其他格式暂作 Mock 处理
-    
-    if (file.type === 'text/plain') {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = reader.result as string;
-        setResumeContent(text);
-        setIsReading(false);
-      };
-      reader.onerror = () => {
-        setError("读取文件失败，请重试");
-        setIsReading(false);
-      };
-      reader.readAsText(file);
-    } else {
-      // PDF or Word: Mock parsing delay
-      setTimeout(() => {
-        // Mock content for demo purposes if backend isn't ready
-        setResumeContent(`[模拟解析内容] 这是一个从 ${file.name} 解析出来的简历内容...`);
-        setIsReading(false);
-      }, 1500);
+    try {
+      // 调用后端 API 解析文件
+      const response = await resumeApi.uploadFile(file);
+
+      if (response.success) {
+        setResumeContent(response.content);
+      } else {
+        setError(response.errorMessage || '文件解析失败');
+      }
+    } catch (err: any) {
+      console.error('文件上传失败:', err);
+      setError(err.response?.data?.message || '文件上传失败，请重试');
+    } finally {
+      setIsReading(false);
     }
   }, [setResumeContent, setUploadedFile]);
 
