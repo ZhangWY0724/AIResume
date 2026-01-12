@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wand2, Download, ArrowLeft, Sparkles, Home, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ export default function ResumePolish() {
 
   // 生成文件预览 URL
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
     if (uploadedFile) {
@@ -37,6 +38,9 @@ export default function ResumePolish() {
         navigate('/upload');
         return;
       }
+
+      if (initialized.current) return;
+      initialized.current = true;
 
       try {
         setIsPolishing(true);

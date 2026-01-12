@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, Download, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ export default function AnalysisResult() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const { resumeContent, selectedIndustry } = useResumeStore();
   const navigate = useNavigate();
+  const initialized = useRef(false);
 
   useEffect(() => {
     const analyzeResume = async () => {
@@ -20,6 +21,9 @@ export default function AnalysisResult() {
         navigate('/upload');
         return;
       }
+
+      if (initialized.current) return;
+      initialized.current = true;
 
       try {
         setLoading(true);

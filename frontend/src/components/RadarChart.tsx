@@ -7,16 +7,18 @@ import {
   ResponsiveContainer,
   Tooltip
 } from "recharts";
+import { DimensionScore } from "@/lib/api";
 
 interface RadarChartProps {
-  data: Record<string, number>;
+  data: DimensionScore[];
 }
 
 export default function RadarChart({ data }: RadarChartProps) {
-  // Transform object to array format required by Recharts
-  const chartData = Object.entries(data).map(([subject, A]) => ({
-    subject,
-    A,
+  // Transform array format to Recharts format
+  // API returns [{ name: "Skill", score: 85, ... }]
+  const chartData = data.map((item) => ({
+    subject: item.name,
+    A: item.score,
     fullMark: 100,
   }));
 

@@ -74,3 +74,53 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+  .animation-delay-6000 {
+    animation-delay: 6s;
+  }
+  
+  @keyframes fluid-flow {
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(50px, -80px) scale(1.2);
+    }
+    66% {
+      transform: translate(-40px, 40px) scale(0.8);
+    }
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+  }
+  
+  @keyframes fluid-flow-reverse {
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(-50px, 80px) scale(1.2);
+    }
+    66% {
+      transform: translate(40px, -40px) scale(0.8);
+    }
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+  }
+
+  .animate-fluid {
+    animation: fluid-flow 15s infinite ease-in-out;
+  }
+  
+  .animate-fluid-reverse {
+    animation: fluid-flow-reverse 20s infinite ease-in-out;
+  }
+}
