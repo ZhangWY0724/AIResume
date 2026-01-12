@@ -37,11 +37,11 @@
 |------|------|------|
 | score | number | 综合评分 (0-100) |
 | comment | string | AI 专业点评文案 (约150字) |
-| dimensions | object | 六维能力评分 |
-| ats_score | number | ATS 友好度评分 (0-100) |
+| dimensions | object[] | 六维能力评分列表 |
+| atsScore | number | ATS 友好度评分 (0-100) |
 | highlights | string[] | 3个简历亮点 |
 | weaknesses | string[] | 3个需改进的地方 |
-| keywords_missing | string[] | 缺少的行业关键词 (3-5个) |
+| missingKeywords | string[] | 缺少的行业关键词 (3-5个) |
 
 **六维评分维度**（按行业不同）：
 - 程序员：算法基础、系统架构、工程质量、技术广度、业务理解、影响力
@@ -83,10 +83,10 @@
 **输出**：
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| match_score | number | 匹配度评分 (0-100) |
+| matchScore | number | 匹配度评分 (0-100) |
 | analysis | string | 匹配度分析 (约100字) |
-| matched_keywords | string[] | 已匹配的关键词 (5-8个) |
-| missing_keywords | string[] | 缺少的关键词 (5-8个) |
+| matchedKeywords | string[] | 已匹配的关键词 (5-8个) |
+| missingKeywords | string[] | 缺少的关键词 (5-8个) |
 | suggestions | string[] | 优化建议 (5条) |
 
 ---
@@ -632,18 +632,22 @@ public static class AnalyzePrompts
 {{
   ""score"": 75,
   ""comment"": ""整体点评，约150字，指出优势和不足"",
-  ""dimensions"": {{
-    ""{industryConfig.Dimensions[0]}"": 80,
-    ""{industryConfig.Dimensions[1]}"": 70,
-    ""{industryConfig.Dimensions[2]}"": 85,
-    ""{industryConfig.Dimensions[3]}"": 60,
-    ""{industryConfig.Dimensions[4]}"": 75,
-    ""{industryConfig.Dimensions[5]}"": 65
-  }},
-  ""ats_score"": 68,
+  ""dimensions"": [
+    {{
+      ""name"": ""{industryConfig.Dimensions[0]}"",
+      ""score"": 80,
+      ""comment"": ""维度点评""
+    }},
+    {{
+      ""name"": ""{industryConfig.Dimensions[1]}"",
+      ""score"": 70,
+      ""comment"": ""维度点评""
+    }}
+  ],
+  ""atsScore"": 68,
   ""highlights"": [""亮点1"", ""亮点2"", ""亮点3""],
   ""weaknesses"": [""不足1"", ""不足2"", ""不足3""],
-  ""keywords_missing"": [""缺少的关键词1"", ""缺少的关键词2""]
+  ""missingKeywords"": [""缺少的关键词1"", ""缺少的关键词2""]
 }}
 
 {BasePrompts.JsonConstraint}
@@ -720,10 +724,10 @@ public static class MatchPrompts
 
 ## 输出 JSON 格式
 {{
-  ""match_score"": 72,
+  ""matchScore"": 72,
   ""analysis"": ""匹配度分析，约100字"",
-  ""matched_keywords"": [""已匹配关键词1"", ""已匹配关键词2""],
-  ""missing_keywords"": [""缺少关键词1"", ""缺少关键词2""],
+  ""matchedKeywords"": [""已匹配关键词1"", ""已匹配关键词2""],
+  ""missingKeywords"": [""缺少关键词1"", ""缺少关键词2""],
   ""suggestions"": [
     ""建议1：补充XX技能的相关经验"",
     ""建议2：强调XX方面的项目经历"",

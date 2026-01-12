@@ -37,7 +37,9 @@ public static class AnalyzePrompts
   ],
   ""comment"": ""整体点评（100-200字，专业、客观）"",
   ""strengths"": [""优势1"", ""优势2"", ""优势3""],
-  ""improvements"": [""改进建议1"", ""改进建议2"", ""改进建议3""]
+  ""improvements"": [""改进建议1"", ""改进建议2"", ""改进建议3""],
+  ""atsScore"": ATS友好度评分(0-100),
+  ""missingKeywords"": [""缺失关键词1"", ""缺失关键词2"", ""缺失关键词3""]
 }}
 
 {BasePrompts.JsonConstraint}

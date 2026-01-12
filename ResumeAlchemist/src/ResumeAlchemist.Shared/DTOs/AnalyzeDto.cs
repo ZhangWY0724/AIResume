@@ -50,6 +50,16 @@ public class AnalyzeResponse
     /// 改进建议列表
     /// </summary>
     public List<string> Improvements { get; set; } = new();
+
+    /// <summary>
+    /// ATS 友好度评分 (0-100)
+    /// </summary>
+    public int AtsScore { get; set; }
+
+    /// <summary>
+    /// 缺失的行业关键词
+    /// </summary>
+    public List<string> MissingKeywords { get; set; } = new();
 }
 
 /// <summary>
