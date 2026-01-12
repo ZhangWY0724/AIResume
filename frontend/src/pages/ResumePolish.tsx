@@ -1,0 +1,230 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Wand2, Download, ArrowLeft, Sparkles, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useResumeStore } from '@/store/useResumeStore';
+import { MOCK_POLISH_RESULT } from '@/lib/mockData';
+import Typewriter from '@/components/Typewriter';
+import { cn } from '@/lib/utils';
+
+export default function ResumePolish() {
+  const navigate = useNavigate();
+  const { resumeContent, uploadedFile } = useResumeStore();
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [activeChangeIndex, setActiveChangeIndex] = useState(0);
+  const [viewMode, setViewMode] = useState<'text' | 'file'>('text');
+  
+  // 如果没有简历内容，使用 placeholder
+  const originalContent = resumeContent || "（此处应显示您的原始简历内容...）";
+  
+  // 生成文件预览 URL
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (uploadedFile) {
+      const url = URL.createObjectURL(uploadedFile);
+      setFileUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [uploadedFile]);
+
+  useEffect(() => {
+    // 自动开始润色 (模拟)
+    const timer = setTimeout(() => {
+        setIsPolishing(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 模拟 Changes 列表的滚动播放
+  useEffect(() => {
+    if (!isPolishing || isCompleted) return;
+    const interval = setInterval(() => {
+      setActiveChangeIndex(prev => (prev + 1) % MOCK_POLISH_RESULT.changes.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [isPolishing, isCompleted]);
+
+  const handleComplete = () => {
+    setIsCompleted(true);
+    setIsPolishing(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header same as before */}
+      <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-20">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-7xl">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              title="重选行业"
+            >
+              <Home className="w-4 h-4" />
+            </button>
+            <div className="w-px h-4 bg-border" />
+            <button 
+              onClick={() => navigate('/result')}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              返回分析报告
+            </button>
+          </div>
+          
+          <h1 className="font-semibold text-lg flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI 智能润色
+          </h1>
+
+          <div className="flex gap-3">
+             {isCompleted && (
+                <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:shadow-lg transition-all animate-in fade-in zoom-in">
+                  <Download className="w-4 h-4" />
+                  导出 PDF
+                </button>
+             )}
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-4rem)]">
+        
+        {/* Left Column: Original */}
+        <div className="flex flex-col h-full overflow-hidden border rounded-xl bg-card shadow-sm">
+          <div className="p-2 border-b bg-muted/30 flex justify-between items-center">
+             <div className="flex bg-background/50 rounded-lg p-1 gap-1">
+                <button 
+                  onClick={() => setViewMode('text')}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                    viewMode === 'text' ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  解析文本
+                </button>
+                <button 
+                  onClick={() => setViewMode('file')}
+                  disabled={!uploadedFile}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                    viewMode === 'file' ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    !uploadedFile && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  原件预览
+                </button>
+             </div>
+             {uploadedFile && <span className="text-xs text-muted-foreground mr-2 truncate max-w-[150px]">{uploadedFile.name}</span>}
+          </div>
+          
+          <div className="flex-1 overflow-hidden relative bg-muted/10">
+            {viewMode === 'text' ? (
+              <div className="h-full overflow-y-auto p-6">
+                <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                  {originalContent}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center">
+                {fileUrl ? (
+                  <iframe src={fileUrl} className="w-full h-full border-none" title="Resume Preview" />
+                ) : (
+                  <div className="text-muted-foreground text-sm">无法预览文件</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Polished */}
+        <div className={cn(
+          "flex flex-col h-full overflow-hidden border rounded-xl shadow-md transition-all duration-500 relative",
+          isPolishing ? "border-primary ring-1 ring-primary/20 bg-background" : "bg-card border-border"
+        )}>
+          {/* Active AI Status Overlay */}
+          <div className="p-4 border-b bg-primary/5 flex justify-between items-center relative overflow-hidden">
+             <div className="flex items-center gap-2 z-10">
+               <div className={cn("w-2 h-2 rounded-full", isCompleted ? "bg-green-500" : "bg-primary animate-pulse")} />
+               <span className={cn("font-medium text-sm", isCompleted ? "text-green-600" : "text-primary")}>
+                 {isCompleted ? "润色完成" : isPolishing ? "AI 正在重写..." : "准备就绪"}
+               </span>
+             </div>
+             {/* Animated Progress Bar */}
+             {!isCompleted && isPolishing && (
+               <motion.div 
+                 className="absolute bottom-0 left-0 h-0.5 bg-primary z-0"
+                 initial={{ width: "0%" }}
+                 animate={{ width: "100%" }}
+                 transition={{ duration: 15, ease: "linear" }}
+               />
+             )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 relative">
+            {!isPolishing && !isCompleted ? (
+               <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40">
+                 <Wand2 className="w-16 h-16 mb-4 opacity-20" />
+                 <p>等待启动...</p>
+               </div>
+            ) : (
+               <Typewriter 
+                 text={MOCK_POLISH_RESULT.polishedContent} 
+                 speed={5} 
+                 onComplete={handleComplete}
+                 className="prose prose-sm max-w-none text-foreground font-mono text-sm leading-relaxed"
+               />
+            )}
+          </div>
+          
+          {/* Floating AI Insights Panel */}
+          <AnimatePresence>
+            {(isPolishing || isCompleted) && (
+              <motion.div 
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="absolute bottom-6 left-6 right-6 bg-popover/90 backdrop-blur-md border rounded-xl p-4 shadow-lg ring-1 ring-black/5"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-full bg-blue-500/10 text-blue-600 mt-0.5">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                      Optimization Strategy
+                    </h4>
+                    <AnimatePresence mode="wait">
+                      <motion.p 
+                        key={activeChangeIndex}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="text-sm font-medium"
+                      >
+                         {MOCK_POLISH_RESULT.changes[activeChangeIndex].text}
+                      </motion.p>
+                    </AnimatePresence>
+                  </div>
+                  <div className="flex gap-1 self-center">
+                    {MOCK_POLISH_RESULT.changes.map((_, idx) => (
+                      <div 
+                        key={idx}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-colors duration-300",
+                          idx === activeChangeIndex ? "bg-primary" : "bg-muted"
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+      </main>
+    </div>
+  );
+}

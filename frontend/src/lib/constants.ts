@@ -1,0 +1,60 @@
+import { Code2, Lightbulb, Palette, BarChart3, Megaphone, Briefcase, Users } from 'lucide-react';
+
+export const INDUSTRIES = [
+  {
+    id: 'programmer',
+    name: '技术/程序员',
+    icon: Code2,
+    description: 'Java/Go/前端/全栈',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+  },
+  {
+    id: 'pm',
+    name: '产品经理',
+    icon: Lightbulb,
+    description: '产品规划/用户研究',
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-500/10',
+  },
+  {
+    id: 'designer',
+    name: 'UI/UX设计师',
+    icon: Palette,
+    description: '视觉/交互设计',
+    color: 'text-pink-500',
+    bgColor: 'bg-pink-500/10',
+  },
+  {
+    id: 'analyst',
+    name: '数据分析师',
+    icon: BarChart3,
+    description: '数据分析/BI',
+    color: 'text-green-500',
+    bgColor: 'bg-green-500/10',
+  },
+  {
+    id: 'marketing',
+    name: '市场/运营',
+    icon: Megaphone,
+    description: '品牌/增长/内容',
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+  },
+  {
+    id: 'sales',
+    name: '销售',
+    icon: Briefcase,
+    description: '客户开发/商务',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-500/10',
+  },
+  {
+    id: 'hr',
+    name: 'HR',
+    icon: Users,
+    description: '招聘/组织发展',
+    color: 'text-red-500',
+    bgColor: 'bg-red-500/10',
+  },
+];

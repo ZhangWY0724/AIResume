@@ -1,0 +1,12 @@
+﻿/.claude/
+/.idea/
+/frontend/dist/
+/frontend/node_modules/
+/ResumeAlchemist/src/ResumeAlchemist.Api/bin/
+/ResumeAlchemist/src/ResumeAlchemist.Api/obj/
+/ResumeAlchemist/src/ResumeAlchemist.Core/bin/
+/ResumeAlchemist/src/ResumeAlchemist.Core/obj/
+/ResumeAlchemist/src/ResumeAlchemist.Infrastructure/obj/
+/ResumeAlchemist/src/ResumeAlchemist.Infrastructure/bin/
+/ResumeAlchemist/src/ResumeAlchemist.Shared/bin/
+/ResumeAlchemist/src/ResumeAlchemist.Shared/obj/
