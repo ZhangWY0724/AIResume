@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, Download, HelpCircle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, Download, HelpCircle, MessageSquare, Target, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore, hashContent } from '@/store/useResumeStore';
 import { resumeApi, AnalyzeResponse, SseProgressData } from '@/lib/api';
@@ -13,7 +13,9 @@ export default function AnalysisResult() {
     selectedIndustry,
     analysisResult,
     analysisContentHash,
-    setAnalysisResult
+    setAnalysisResult,
+    interviewResult,
+    setInterviewResult
   } = useResumeStore();
 
   // 计算当前内容的哈希值，判断是否有有效缓存
@@ -26,8 +28,14 @@ export default function AnalysisResult() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(hasCachedResult ? analysisResult : null);
   const [progress, setProgress] = useState<SseProgressData | null>(null);
+  
+  // Interview prediction state
+  const [loadingInterview, setLoadingInterview] = useState(false);
+  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
+
   const navigate = useNavigate();
   const requestStartedRef = useRef(false);
+  const interviewRequestStartedRef = useRef(false);
 
   useEffect(() => {
     // 如果已经有本地结果，不重复发起
@@ -56,6 +64,10 @@ export default function AnalysisResult() {
 
     console.log('[AnalysisResult] 开始发起分析请求');
     requestStartedRef.current = true;
+
+    // 清除旧的面试预测结果，确保重新生成
+    setInterviewResult(null);
+    interviewRequestStartedRef.current = false; // 重置面试请求标志
 
     setLoading(true);
     setError(null);
@@ -94,6 +106,38 @@ export default function AnalysisResult() {
 
     // 不在 cleanup 中取消请求，让请求完成
   }, [resumeContent, selectedIndustry, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult]);
+
+  // Effect to fetch interview prediction
+  useEffect(() => {
+    // Only fetch if analysis is done, we have content, and no existing interview result
+    if (result && !interviewResult && !loadingInterview && resumeContent) {
+      if (interviewRequestStartedRef.current) {
+         return;
+      }
+      
+      console.log('[AnalysisResult] 开始发起面试预测请求');
+      interviewRequestStartedRef.current = true;
+      setLoadingInterview(true);
+      
+      resumeApi.predictInterview({
+        resumeContent,
+        industryId: selectedIndustry || 'general',
+        targetPosition: 'Based on resume' // Optional: could be parsed from resume or user input
+      })
+      .then(res => {
+        console.log('[AnalysisResult] 面试预测完成:', res);
+        setInterviewResult(res);
+      })
+      .catch(err => {
+        console.error('[AnalysisResult] 面试预测失败:', err);
+        interviewRequestStartedRef.current = false; // Allow retry on failure
+        // We don't block the UI if this fails, just log it
+      })
+      .finally(() => {
+        setLoadingInterview(false);
+      });
+    }
+  }, [result, interviewResult, loadingInterview, resumeContent, selectedIndustry, setInterviewResult]);
 
   if (!resumeContent && !loading) {
     navigate('/upload');
@@ -286,6 +330,133 @@ export default function AnalysisResult() {
             * 补充这些行业关键词可显著提升简历筛选通过率
           </p>
         </div>
+      </div>
+
+      {/* AI Interview Predictor Section */}
+      <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+        <div className="flex items-center gap-2 mb-6">
+           <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+             <MessageSquare className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+           </div>
+           <div>
+             <h3 className="text-xl font-bold">AI 面试官追问</h3>
+             <p className="text-sm text-muted-foreground">基于您的简历内容，预测面试官最感兴趣的 6 个问题</p>
+           </div>
+        </div>
+
+        {/* Preparation Tips Section */}
+        {interviewResult?.preparationTips && (
+           <div className="mb-6 p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800 rounded-xl flex gap-3">
+              <Lightbulb className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-purple-900 dark:text-purple-300 text-sm mb-1">面试准备建议</h4>
+                <p className="text-sm text-purple-800/80 dark:text-purple-300/80 leading-relaxed">
+                   {interviewResult.preparationTips}
+                </p>
+              </div>
+           </div>
+        )}
+
+        {loadingInterview ? (
+            <div className="space-y-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="h-32 rounded-xl bg-card border shadow-sm animate-pulse flex flex-col justify-center p-6 gap-3">
+                       <div className="flex gap-3 mb-2">
+                           <div className="w-16 h-5 bg-muted/50 rounded-full" />
+                           <div className="w-20 h-5 bg-muted/50 rounded-full" />
+                       </div>
+                       <div className="w-3/4 h-6 bg-muted/50 rounded" />
+                       <div className="w-1/2 h-4 bg-muted/30 rounded" />
+                    </div>
+                ))}
+            </div>
+        ) : interviewResult ? (
+            <div className="space-y-4">
+                {interviewResult.questions.map((q, i) => (
+                    <div key={i} className="bg-card border rounded-xl p-5 shadow-sm hover:border-purple-200 dark:hover:border-purple-800 transition-all group">
+                        <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
+                            <div className="flex-1 space-y-3 w-full">
+                                {/* Header: Tags */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className={cn(
+                                        "text-xs font-medium px-2.5 py-0.5 rounded-full border flex items-center gap-1",
+                                        (q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:border-red-800" :
+                                        (q.difficulty?.includes('Medium') || q.difficulty?.includes('中')) ? "bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800" :
+                                        "bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                                    )}>
+                                        {(q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? '⚡ 高难度' : 
+                                         (q.difficulty?.includes('Medium') || q.difficulty?.includes('中')) ? '⚖️ 中等难度' : '🌱 基础题'}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground px-2.5 py-0.5 bg-secondary rounded-full border border-transparent">
+                                        {q.category}
+                                    </span>
+                                </div>
+
+                                {/* Question */}
+                                <h4 className="text-lg font-semibold text-foreground/90 leading-snug">
+                                    {q.question}
+                                </h4>
+                                
+                                {/* Reason */}
+                                <div className="flex gap-2 text-sm text-muted-foreground bg-secondary/30 p-3 rounded-lg border border-transparent group-hover:border-border/50 transition-colors">
+                                    <Target className="w-4 h-4 mt-0.5 shrink-0 text-purple-500" />
+                                    <span>
+                                        <span className="font-medium text-foreground/70 mr-1">考察意图:</span>
+                                        {q.reason}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="shrink-0 pt-1 w-full md:w-auto">
+                                <button 
+                                    onClick={() => setExpandedQuestion(expandedQuestion === i ? null : i)}
+                                    className={cn(
+                                        "flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all w-full md:w-auto border",
+                                        expandedQuestion === i 
+                                            ? "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300 shadow-inner"
+                                            : "bg-background border-border hover:bg-secondary text-foreground hover:border-secondary-foreground/20"
+                                    )}
+                                >
+                                    <Lightbulb className={cn("w-4 h-4", expandedQuestion === i ? "fill-current" : "")} />
+                                    {expandedQuestion === i ? "收起思路" : "查看思路"}
+                                    {expandedQuestion === i ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Expandable Tips */}
+                        <motion.div 
+                            initial={false}
+                            animate={{ 
+                                height: expandedQuestion === i ? 'auto' : 0,
+                                opacity: expandedQuestion === i ? 1 : 0,
+                                marginTop: expandedQuestion === i ? 16 : 0
+                            }}
+                            className="overflow-hidden"
+                        >
+                            <div className="pt-4 border-t border-dashed">
+                                <div className="flex gap-3">
+                                    <div className="shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                        <Sparkles className="w-4 h-4" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h5 className="text-sm font-medium text-foreground">AI 回答建议</h5>
+                                        <p className="text-sm text-muted-foreground leading-relaxed">
+                                            {q.tips}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="text-center py-8 text-muted-foreground bg-secondary/20 rounded-xl">
+                未能生成面试预测
+            </div>
+        )}
       </div>
 
       {/* Actions */}

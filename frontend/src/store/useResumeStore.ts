@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AnalyzeResponse } from '@/lib/api';
+import { AnalyzeResponse, InterviewResponse } from '@/lib/api';
 
 interface ResumeState {
   // 行业选择
@@ -20,8 +20,10 @@ interface ResumeState {
 
   // 分析结果缓存
   analysisResult: AnalyzeResponse | null;
+  interviewResult: InterviewResponse | null; // 面试预测缓存
   analysisContentHash: string | null; // 用于判断简历内容是否变化
   setAnalysisResult: (result: AnalyzeResponse | null, contentHash?: string) => void;
+  setInterviewResult: (result: InterviewResponse | null) => void;
   clearAnalysisCache: () => void;
 }
 
@@ -45,12 +47,14 @@ export const useResumeStore = create<ResumeState>((set) => ({
 
   // 分析结果缓存
   analysisResult: null,
+  interviewResult: null,
   analysisContentHash: null,
   setAnalysisResult: (result, contentHash) => set({
     analysisResult: result,
     analysisContentHash: contentHash ?? null
   }),
-  clearAnalysisCache: () => set({ analysisResult: null, analysisContentHash: null }),
+  setInterviewResult: (result) => set({ interviewResult: result }),
+  clearAnalysisCache: () => set({ analysisResult: null, interviewResult: null, analysisContentHash: null }),
 }));
 
 // 导出哈希函数供外部使用
