@@ -8,12 +8,7 @@ namespace ResumeAlchemist.Core.Interfaces;
 public interface IResumePolisherService
 {
     /// <summary>
-    /// 润色简历
+    /// 流式润色简历（返回纯Markdown文本流）
     /// </summary>
-    Task<PolishResponse> PolishAsync(PolishRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 流式润色简历
-    /// </summary>
-    IAsyncEnumerable<PolishStreamEvent> PolishStreamAsync(PolishRequest request, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<string> PolishStreamAsync(PolishRequest request, CancellationToken cancellationToken = default);
 }

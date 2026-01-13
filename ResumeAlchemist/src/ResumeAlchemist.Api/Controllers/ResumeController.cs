@@ -23,6 +23,7 @@ public class ResumeController : ControllerBase
     private readonly IJDMatcherService _matcherService;
     private readonly IResumeParserService _parserService;
     private readonly IInterviewPredictorService _interviewService;
+    private readonly IPdfExportService _pdfExportService;
     private readonly ILogger<ResumeController> _logger;
 
     public ResumeController(
@@ -31,6 +32,7 @@ public class ResumeController : ControllerBase
         IJDMatcherService matcherService,
         IResumeParserService parserService,
         IInterviewPredictorService interviewService,
+        IPdfExportService pdfExportService,
         ILogger<ResumeController> logger)
     {
         _analyzerService = analyzerService;
@@ -38,6 +40,7 @@ public class ResumeController : ControllerBase
         _matcherService = matcherService;
         _parserService = parserService;
         _interviewService = interviewService;
+        _pdfExportService = pdfExportService;
         _logger = logger;
     }
 
@@ -117,9 +120,9 @@ public class ResumeController : ControllerBase
             {
                 responseBuilder.Append(chunk);
 
-                // 每收到一些内容就更新进度
-                var estimatedProgress = Math.Min(90, 10 + (responseBuilder.Length / 50));
-                if (estimatedProgress > lastProgressSent + 5)
+                // 进度计算：每6字符+1%，让进度增长更快（600字符可达到90%）
+                var estimatedProgress = Math.Min(90, 10 + (responseBuilder.Length / 6));
+                if (estimatedProgress > lastProgressSent + 2)
                 {
                     lastProgressSent = estimatedProgress;
                     await SendSseEvent("progress", new SseProgressData
@@ -207,30 +210,7 @@ public class ResumeController : ControllerBase
     }
 
     /// <summary>
-    /// 简历润色
-    /// </summary>
-    /// <param name="request">润色请求</param>
-    /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>润色结果</returns>
-    [HttpPost("polish")]
-    [ProducesResponseType(typeof(PolishResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PolishResponse>> Polish(
-        [FromBody] PolishRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(request.Content))
-        {
-            return BadRequest(new { message = "简历内容不能为空" });
-        }
-
-        _logger.LogInformation("收到简历润色请求");
-        var result = await _polisherService.PolishAsync(request, cancellationToken);
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// 简历润色（SSE 流式响应）
+    /// 简历润色（SSE 流式响应，返回纯 Markdown 文本流）
     /// </summary>
     /// <param name="request">润色请求</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -258,67 +238,20 @@ public class ResumeController : ControllerBase
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
         };
-        var responseBuilder = new StringBuilder();
-        var lastProgressSent = 0;
 
         try
         {
-            // 发送开始事件
-            await SendSseEvent("progress", new SseProgressData
+            // 流式输出纯文本内容
+            await foreach (var chunk in _polisherService.PolishStreamAsync(request, cancellationToken))
             {
-                Percentage = 0,
-                Stage = "初始化",
-                Message = "正在连接 AI 服务..."
-            }, jsonOptions, cancellationToken);
-
-            await SendSseEvent("progress", new SseProgressData
-            {
-                Percentage = 10,
-                Stage = "润色中",
-                Message = "AI 正在优化您的简历..."
-            }, jsonOptions, cancellationToken);
-
-            var fullResponse = new PolishResponse();
-            var contentBuilder = new StringBuilder();
-
-            await foreach (var evt in _polisherService.PolishStreamAsync(request, cancellationToken))
-            {
-                switch (evt.Type)
-                {
-                    case PolishEventType.Summary:
-                        fullResponse.Summary = evt.Data?.ToString() ?? "";
-                        await SendSseEvent("summary", fullResponse.Summary, jsonOptions, cancellationToken);
-                        break;
-                    
-                    case PolishEventType.Change:
-                        if (evt.Data is PolishChange change)
-                        {
-                            fullResponse.Changes.Add(change);
-                            await SendSseEvent("change", change, jsonOptions, cancellationToken);
-                        }
-                        break;
-                    
-                    case PolishEventType.ContentChunk:
-                        var chunk = evt.Data?.ToString() ?? "";
-                        contentBuilder.Append(chunk);
-                        await SendSseEvent("content_chunk", chunk, jsonOptions, cancellationToken);
-                        break;
-                }
+                // 发送内容片段（纯文本）
+                await SendSseEvent("content", new { text = chunk }, jsonOptions, cancellationToken);
             }
 
-            fullResponse.PolishedContent = contentBuilder.ToString();
-
             // 发送完成事件
-            await SendSseEvent("progress", new SseProgressData
-            {
-                Percentage = 100,
-                Stage = "完成",
-                Message = "润色完成！"
-            }, jsonOptions, cancellationToken);
+            await SendSseEvent("done", new { }, jsonOptions, cancellationToken);
 
-            await SendSseEvent("complete", fullResponse, jsonOptions, cancellationToken);
-
-            _logger.LogInformation("流式润色完成，修改项: {Count}", fullResponse.Changes.Count);
+            _logger.LogInformation("流式润色完成");
         }
         catch (Exception ex)
         {
@@ -410,5 +343,36 @@ public class ResumeController : ControllerBase
         _logger.LogInformation("收到面试预测请求");
         var result = await _interviewService.PredictAsync(request, cancellationToken);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// 导出 PDF 简历
+    /// </summary>
+    /// <param name="request">导出请求</param>
+    /// <returns>PDF 文件</returns>
+    [HttpPost("export/pdf")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult ExportPdf([FromBody] PdfExportRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            return BadRequest(new { message = "简历内容不能为空" });
+        }
+
+        _logger.LogInformation("收到 PDF 导出请求");
+
+        try
+        {
+            var pdfBytes = _pdfExportService.GeneratePdf(request);
+            var fileName = $"{request.FileName}.pdf";
+
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PDF 生成失败");
+            return StatusCode(500, new { message = "PDF 生成失败，请重试" });
+        }
     }
 }

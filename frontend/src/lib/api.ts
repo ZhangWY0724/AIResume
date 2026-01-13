@@ -76,18 +76,6 @@ export interface PolishRequest {
   targetPosition?: string;
 }
 
-export interface PolishChange {
-  original: string;
-  polished: string;
-  reason: string;
-}
-
-export interface PolishResponse {
-  polishedContent: string;
-  changes: PolishChange[];
-  summary: string;
-}
-
 export interface ImportResponse {
   success: boolean;
   content: string;
@@ -136,6 +124,12 @@ export interface InterviewResponse {
   preparationTips: string;
 }
 
+export interface PdfExportRequest {
+  content: string;
+  templateId?: string;
+  fileName?: string;
+}
+
 // --- SSE Event Types ---
 
 export interface SseProgressData {
@@ -157,12 +151,10 @@ export type AnalyzeStreamCallback = {
   onError?: (error: SseErrorData) => void;
 };
 
+// 简化的润色流式回调（只有 content/done/error）
 export type PolishStreamCallback = {
-  onProgress?: (data: SseProgressData) => void;
-  onSummary?: (summary: string) => void;
-  onChange?: (change: PolishChange) => void;
-  onContentChunk?: (chunk: string) => void;
-  onComplete?: (result: PolishResponse) => void;
+  onContent?: (text: string) => void;
+  onDone?: () => void;
   onError?: (error: SseErrorData) => void;
 };
 
@@ -344,32 +336,17 @@ export const resumeApi = {
   },
 
   /**
-   * 简历润色
-   */
-  polish: async (data: PolishRequest): Promise<PolishResponse> => {
-    const response = await api.post<PolishResponse>('/Resume/polish', data);
-    return response.data;
-  },
-
-  /**
-   * 简历润色（SSE 流式响应）
-   * @param data 润色请求
-   * @param callbacks 回调函数
-   * @returns AbortController 用于取消请求
+   * 简历润色（SSE 流式响应，返回纯 Markdown 文本流）
+   * 事件类型：content（文本片段）、done（完成）、error（错误）
    */
   polishStream: (data: PolishRequest, callbacks: PolishStreamCallback): AbortController => {
     const controller = new AbortController();
 
-    console.log('[API] polishStream 开始，请求数据:', data);
-
     (async () => {
       try {
-        console.log('[API] 发起 polish-stream fetch 请求...');
         const response = await fetch('/api/Resume/polish-stream', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
           signal: controller.signal,
         });
@@ -377,22 +354,16 @@ export const resumeApi = {
         const reader = await handleStreamResponse(response, callbacks.onError);
         if (!reader) return;
 
-        console.log('[API] 开始读取润色 SSE 流...');
         const decoder = new TextDecoder();
-
         let buffer = '';
         let currentEvent = '';
         let currentData = '';
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) {
-            console.log('[API] 润色 SSE 流读取完成');
-            break;
-          }
+          if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
-
           const lines = buffer.split(/\r?\n/);
           buffer = lines.pop() || '';
 
@@ -400,37 +371,22 @@ export const resumeApi = {
             if (line.trim() === '') {
               if (currentData) {
                 try {
-                   const jsonStr = currentData;
-                   console.log(`[API] Dispatching polish event: ${currentEvent || 'message'}`);
+                  const eventData = JSON.parse(currentData);
+                  const type = currentEvent || 'message';
 
-                   const eventData = JSON.parse(jsonStr);
-                   const type = currentEvent || 'message';
-
-                   switch (type) {
-                     case 'progress':
-                       callbacks.onProgress?.(eventData as SseProgressData);
-                       break;
-                     case 'summary':
-                       callbacks.onSummary?.(eventData as string);
-                       break;
-                     case 'change':
-                       callbacks.onChange?.(eventData as PolishChange);
-                       break;
-                     case 'content_chunk':
-                       callbacks.onContentChunk?.(eventData as string);
-                       break;
-                     case 'complete':
-                       console.log('[API] 触发润色 onComplete 回调');
-                       callbacks.onComplete?.(eventData as PolishResponse);
-                       break;
-                     case 'error':
-                       callbacks.onError?.(eventData as SseErrorData);
-                       break;
-                     default:
-                       console.log('[API] Unhandled polish event type:', type);
-                   }
+                  switch (type) {
+                    case 'content':
+                      callbacks.onContent?.(eventData.text);
+                      break;
+                    case 'done':
+                      callbacks.onDone?.();
+                      break;
+                    case 'error':
+                      callbacks.onError?.(eventData as SseErrorData);
+                      break;
+                  }
                 } catch (e) {
-                   console.warn('解析润色 SSE 数据失败:', currentData, e);
+                  console.warn('解析润色 SSE 数据失败:', currentData, e);
                 }
               }
               currentEvent = '';
@@ -447,10 +403,7 @@ export const resumeApi = {
           }
         }
       } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.log('润色 SSE 请求已取消');
-          return;
-        }
+        if (error.name === 'AbortError') return;
         callbacks.onError?.({ message: error.message || '网络错误', code: 'NETWORK_ERROR' });
       }
     })();
@@ -468,11 +421,27 @@ export const resumeApi = {
 
   /**
    * 面试预测
+   * @param data 请求数据
+   * @param signal 可选的 AbortSignal，用于取消请求
    */
-  predictInterview: async (data: InterviewRequest): Promise<InterviewResponse> => {
+  predictInterview: async (data: InterviewRequest, signal?: AbortSignal): Promise<InterviewResponse> => {
     const response = await api.post<InterviewResponse>('/Resume/interview', data, {
       timeout: 180000, // 面试预测需要更长时间，设置 180s 超时
+      signal, // 支持取消请求
     });
     return response.data;
-  }
+  },
+
+  /**
+   * 导出 PDF 简历
+   * @param data 导出请求
+   * @returns PDF Blob
+   */
+  exportPdf: async (data: PdfExportRequest): Promise<Blob> => {
+    const response = await api.post('/Resume/export/pdf', data, {
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    return response.data;
+  },
 };

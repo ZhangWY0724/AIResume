@@ -63,6 +63,7 @@ builder.Services.AddScoped<IResumeAnalyzerService, ResumeAnalyzerService>();
 builder.Services.AddScoped<IResumePolisherService, ResumePolisherService>();
 builder.Services.AddScoped<IJDMatcherService, JDMatcherService>();
 builder.Services.AddScoped<IInterviewPredictorService, InterviewPredictorService>();
+builder.Services.AddSingleton<IPdfExportService, PdfExportService>();
 
 // 注册基础设施服务 (Infrastructure层)
 builder.Services.AddScoped<IResumeParserService, ResumeParserService>();

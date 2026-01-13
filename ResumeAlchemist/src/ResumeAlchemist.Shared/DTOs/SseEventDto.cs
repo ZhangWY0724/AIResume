@@ -11,9 +11,14 @@ public static class SseEventType
     public const string Progress = "progress";
 
     /// <summary>
+    /// 内容片段事件
+    /// </summary>
+    public const string Content = "content";
+
+    /// <summary>
     /// 完成事件
     /// </summary>
-    public const string Complete = "complete";
+    public const string Done = "done";
 
     /// <summary>
     /// 错误事件
@@ -61,23 +66,4 @@ public class SseErrorData
     /// 建议的重试等待时间（秒），用于频率限制错误
     /// </summary>
     public int? RetryAfterSeconds { get; set; }
-}
-
-/// <summary>
-/// 润色流式事件类型
-/// </summary>
-public enum PolishEventType
-{
-    Summary,
-    Change,
-    ContentChunk
-}
-
-/// <summary>
-/// 润色流式事件数据包
-/// </summary>
-public class PolishStreamEvent
-{
-    public PolishEventType Type { get; set; }
-    public object Data { get; set; } = new();
 }

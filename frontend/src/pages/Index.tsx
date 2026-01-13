@@ -131,7 +131,9 @@ export default function Index() {
     });
 
     const particles = new THREE.Points(geometry, material);
-    scene.add(particles);
+    const group = new THREE.Group();
+    group.add(particles);
+    scene.add(group);
 
     // --- Mouse Interaction (Subtle Parallax) ---
     let mouseX = 0;
@@ -157,15 +159,15 @@ export default function Index() {
       material.uniforms.uTime.value = elapsedTime;
 
       // Smooth camera/particle rotation based on mouse
-      targetRotationY = mouseX * 0.2;
-      targetRotationX = mouseY * 0.2;
+      targetRotationY = mouseX * 0.1;
+      targetRotationX = mouseY * 0.1;
       
-      // Lerp rotation for smoothness
-      particles.rotation.y += (targetRotationY - particles.rotation.y) * 0.05;
-      particles.rotation.x += (targetRotationX - particles.rotation.x) * 0.05;
+      // Lerp rotation for smoothness (Group handles the tilt)
+      group.rotation.y += (targetRotationY - group.rotation.y) * 0.05;
+      group.rotation.x += (targetRotationX - group.rotation.x) * 0.05;
       
-      // Constant slow rotation
-      particles.rotation.y += 0.001;
+      // Constant slow rotation (Particles handle the spin)
+      particles.rotation.y += 0.0005;
 
       renderer.render(scene, camera);
       requestAnimationFrame(animate);

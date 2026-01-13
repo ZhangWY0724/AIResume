@@ -28,7 +28,7 @@ export default function AnalysisResult() {
   const [error, setError] = useState<SseErrorData | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(hasCachedResult ? analysisResult : null);
   const [progress, setProgress] = useState<SseProgressData | null>(null);
-  
+
   // Interview prediction state
   const [loadingInterview, setLoadingInterview] = useState(false);
   const [interviewError, setInterviewError] = useState<{ message: string; isRateLimit?: boolean; isTimeout?: boolean } | null>(null);
@@ -37,7 +37,7 @@ export default function AnalysisResult() {
 
   const navigate = useNavigate();
   const requestStartedRef = useRef(false);
-  const interviewRequestStartedRef = useRef(false);
+  const interviewAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // 如果已经有本地结果，不重复发起
@@ -67,9 +67,8 @@ export default function AnalysisResult() {
     console.log('[AnalysisResult] 开始发起分析请求');
     requestStartedRef.current = true;
 
-    // 清除旧的面试预测结果，确保重新生成
+    // 清除旧的面试预测结果（因为简历内容已变化）
     setInterviewResult(null);
-    interviewRequestStartedRef.current = false; // 重置面试请求标志
 
     setLoading(true);
     setError(null);
@@ -88,13 +87,17 @@ export default function AnalysisResult() {
         },
         onComplete: (response) => {
           console.log('[AnalysisResult] 分析完成:', response);
-          setResult(response);
-          // 缓存分析结果到 store
-          if (currentHash) {
-            setAnalysisResult(response, currentHash);
-          }
-          setLoading(false);
-          setProgress(null);
+          // 先显示 100% 完成状态，延迟 0.5 秒后再跳转到结果
+          setProgress({ percentage: 100, stage: '完成', message: '分析完成！' });
+          setTimeout(() => {
+            setResult(response);
+            // 缓存分析结果到 store
+            if (currentHash) {
+              setAnalysisResult(response, currentHash);
+            }
+            setLoading(false);
+            setProgress(null);
+          }, 500);
         },
         onError: (err) => {
           console.error('[AnalysisResult] 分析失败:', err);
@@ -107,56 +110,54 @@ export default function AnalysisResult() {
     );
 
     // 不在 cleanup 中取消请求，让请求完成
-  }, [resumeContent, selectedIndustry, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult]);
+  }, [resumeContent, selectedIndustry, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult, setInterviewResult]);
 
-  // Effect to fetch interview prediction
+  // 组件卸载时取消面试预测请求
   useEffect(() => {
-    // Only fetch if analysis is done, we have content, and no existing interview result
-    if (result && !interviewResult && !loadingInterview && resumeContent) {
-      if (interviewRequestStartedRef.current) {
-         return;
+    return () => {
+      if (interviewAbortControllerRef.current) {
+        interviewAbortControllerRef.current.abort();
+        interviewAbortControllerRef.current = null;
       }
-      
-      console.log('[AnalysisResult] 开始发起面试预测请求');
-      interviewRequestStartedRef.current = true;
-      setLoadingInterview(true);
-      setInterviewError(null);
+    };
+  }, []);
 
-      resumeApi.predictInterview({
-        resumeContent,
-        industryId: selectedIndustry || 'general',
-        targetPosition: 'Based on resume' // Optional: could be parsed from resume or user input
-      })
-      .then(res => {
-        console.log('[AnalysisResult] 面试预测完成:', res);
-        setInterviewResult(res);
-      })
-      .catch(err => {
-        console.error('[AnalysisResult] 面试预测失败:', err);
-        interviewRequestStartedRef.current = false; // Allow retry on failure
+  // 手动触发面试预测
+  const handleGenerateInterview = () => {
+    if (!resumeContent) return;
 
-        // 判断错误类型
-        if (err instanceof RateLimitError) {
-          setInterviewError({
-            message: err.message,
-            isRateLimit: true
-          });
-        } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-          setInterviewError({
-            message: 'AI 生成面试问题需要较长时间，请稍后重试',
-            isTimeout: true
-          });
-        } else {
-          setInterviewError({
-            message: err.message || '面试预测失败，请重试'
-          });
-        }
-      })
-      .finally(() => {
+    setLoadingInterview(true);
+    setInterviewError(null);
+
+    // 创建 AbortController 用于取消请求
+    const abortController = new AbortController();
+    interviewAbortControllerRef.current = abortController;
+
+    resumeApi.predictInterview({
+      resumeContent,
+      industryId: selectedIndustry || 'general',
+    }, abortController.signal)
+    .then(res => {
+      if (abortController.signal.aborted) return;
+      setInterviewResult(res);
+    })
+    .catch(err => {
+      if (err.name === 'CanceledError' || abortController.signal.aborted) return;
+
+      if (err instanceof RateLimitError) {
+        setInterviewError({ message: err.message, isRateLimit: true });
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setInterviewError({ message: 'AI 生成面试问题需要较长时间，请稍后重试', isTimeout: true });
+      } else {
+        setInterviewError({ message: err.message || '面试预测失败，请重试' });
+      }
+    })
+    .finally(() => {
+      if (!abortController.signal.aborted) {
         setLoadingInterview(false);
-      });
-    }
-  }, [result, interviewResult, loadingInterview, resumeContent, selectedIndustry, setInterviewResult]);
+      }
+    });
+  };
 
   if (!resumeContent && !loading) {
     navigate('/upload');
@@ -256,7 +257,7 @@ export default function AnalysisResult() {
 
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl animate-in fade-in duration-700 space-y-8">
-        
+
         {/* 顶部标题栏 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -264,13 +265,13 @@ export default function AnalysisResult() {
              <p className="text-muted-foreground mt-1">AI 全维度诊断完成，为您生成专属优化方案</p>
           </div>
           <div className="flex gap-3">
-              <button 
+              <button
                 onClick={() => navigate('/upload')}
                 className="px-4 py-2 rounded-full border hover:bg-secondary transition-colors text-sm font-medium"
               >
                 重新上传
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/polish')}
                 className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 transition-all text-sm font-medium flex items-center gap-2"
               >
@@ -279,28 +280,28 @@ export default function AnalysisResult() {
               </button>
           </div>
         </div>
-  
+
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-min">
-          
+
           {/* 1. 核心评分 (Score) - 左上 - 占 1 列 */}
           <div className="md:col-span-1 bg-card border rounded-3xl p-6 shadow-sm relative overflow-hidden flex flex-col items-center justify-center min-h-[280px] group hover:border-primary/20 transition-colors">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
-              
+
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4 z-10">综合评分</h3>
-              
+
               <div className="relative w-40 h-40 flex items-center justify-center z-10">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                     <circle className="text-muted/20 stroke-current" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent"></circle>
-                    <motion.circle 
-                      className={cn("stroke-current drop-shadow-md", 
+                    <motion.circle
+                      className={cn("stroke-current drop-shadow-md",
                         result.score >= 80 ? "text-green-500" : result.score >= 60 ? "text-yellow-500" : "text-destructive"
-                      )} 
-                      strokeWidth="8" 
-                      strokeLinecap="round" 
-                      cx="50" cy="50" r="40" 
-                      fill="transparent" 
-                      strokeDasharray="251.2" 
+                      )}
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      cx="50" cy="50" r="40"
+                      fill="transparent"
+                      strokeDasharray="251.2"
                       initial={{ strokeDashoffset: 251.2 }}
                       animate={{ strokeDashoffset: 251.2 * (1 - result.score / 100) }}
                       transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
@@ -308,21 +309,21 @@ export default function AnalysisResult() {
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-5xl font-bold tracking-tighter">{result.score}</span>
-                    <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full mt-1", 
-                        result.score >= 80 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : 
-                        result.score >= 60 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : 
+                    <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full mt-1",
+                        result.score >= 80 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                        result.score >= 60 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
                         "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                     )}>
                       {result.score >= 80 ? "优秀" : result.score >= 60 ? "良好" : "需改进"}
                     </span>
                   </div>
               </div>
-              
+
               <p className="text-xs text-center text-muted-foreground mt-4 max-w-[80%] z-10">
                   击败了 {Math.max(10, Math.floor(result.score * 0.95))}% 的求职者
               </p>
           </div>
-  
+
           {/* 2. 雷达图 (Radar) - 中间 - 占 1 列 */}
           <div className="md:col-span-1 bg-card border rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center min-h-[280px] hover:border-primary/20 transition-colors">
               <div className="w-full flex justify-between items-center mb-2 px-2">
@@ -333,7 +334,7 @@ export default function AnalysisResult() {
                   <RadarChart data={result.dimensions} />
               </div>
           </div>
-  
+
           {/* 3. 点评与 ATS (Review) - 右侧 - 占 2 列 */}
           <div className="md:col-span-2 bg-card border rounded-3xl p-6 shadow-sm flex flex-col justify-between min-h-[280px] hover:border-primary/20 transition-colors">
               <div>
@@ -349,7 +350,7 @@ export default function AnalysisResult() {
                       </p>
                   </div>
               </div>
-  
+
               <div className="mt-6 pt-6 border-t">
                   <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -375,7 +376,7 @@ export default function AnalysisResult() {
                   </div>
               </div>
           </div>
-  
+
                   {/* 4. 待改进 (Weaknesses) - 第二行左侧 - 占 2 列 */}
                   <div className="md:col-span-2 bg-card border rounded-3xl p-6 shadow-sm hover:border-orange-200 dark:hover:border-orange-900/50 transition-colors">
                        <div className="flex items-center gap-2 mb-5 text-orange-600 dark:text-orange-400">
@@ -385,7 +386,7 @@ export default function AnalysisResult() {
                        <div className="space-y-3">
                           {result.improvements.map((item, i) => (
                             <div key={i} className="rounded-xl border border-transparent bg-orange-50/50 dark:bg-orange-950/20 hover:border-orange-200 dark:hover:border-orange-800 transition-all overflow-hidden">
-                              <button 
+                              <button
                                   onClick={() => setExpandedImprovement(expandedImprovement === i ? null : i)}
                                   className="w-full flex items-start gap-3 p-4 text-left cursor-pointer"
                               >
@@ -397,12 +398,12 @@ export default function AnalysisResult() {
                                       <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform shrink-0 mt-0.5", expandedImprovement === i ? "rotate-180" : "")} />
                                   )}
                               </button>
-          
+
                               {/* Comparison Content */}
                               {typeof item !== 'string' && (
-                                  <motion.div 
+                                  <motion.div
                                       initial={false}
-                                      animate={{ 
+                                      animate={{
                                           height: expandedImprovement === i ? 'auto' : 0,
                                           opacity: expandedImprovement === i ? 1 : 0
                                       }}
@@ -419,7 +420,7 @@ export default function AnalysisResult() {
                                                       </p>
                                                   </div>
                                               )}
-                                              
+
                                               {/* After */}
                                               <div className="flex gap-3 text-sm">
                                                   <span className="shrink-0 text-green-600 font-bold text-xs mt-0.5">✅ 建议</span>
@@ -428,9 +429,9 @@ export default function AnalysisResult() {
                                                   </p>
                                               </div>
                                           </div>
-                                          
+
                                           <div className="flex justify-end">
-                                              <button 
+                                              <button
                                                   onClick={() => navigate('/polish')}
                                                   className="text-xs font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1 hover:underline"
                                               >
@@ -443,7 +444,7 @@ export default function AnalysisResult() {
                             </div>
                           ))}
                        </div>
-                  </div>  
+                  </div>
           {/* 5. 亮点 (Strengths) - 第二行右侧 - 占 1 列 */}
           <div className="md:col-span-1 bg-card border rounded-3xl p-6 shadow-sm hover:border-green-200 dark:hover:border-green-900/50 transition-colors">
               <div className="flex items-center gap-2 mb-5 text-green-600 dark:text-green-400">
@@ -459,7 +460,7 @@ export default function AnalysisResult() {
                   ))}
               </ul>
           </div>
-  
+
           {/* 6. 缺失关键词 (Keywords) - 第二行最右 - 占 1 列 */}
           <div className="md:col-span-1 bg-card border rounded-3xl p-6 shadow-sm flex flex-col hover:border-blue-200 dark:hover:border-blue-900/50 transition-colors">
               <div className="flex items-center gap-2 mb-5 text-blue-600 dark:text-blue-400">
@@ -477,21 +478,23 @@ export default function AnalysisResult() {
                   * 补充这些关键词可显著提升 ATS 匹配率
               </p>
           </div>
-  
+
       </div>
-  
+
         {/* 7. AI 面试预测 (Interview) - 独立区域，保持全宽 */}
         <div className="mt-8 pt-8 border-t">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-2xl">
-               <MessageSquare className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-             </div>
-             <div>
-               <h3 className="text-2xl font-bold">AI 面试官追问</h3>
-               <p className="text-muted-foreground">基于您的简历内容，预测面试官最感兴趣的 6 个问题</p>
+          <div className="flex items-center justify-between mb-6">
+             <div className="flex items-center gap-3">
+               <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-2xl">
+                 <MessageSquare className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+               </div>
+               <div>
+                 <h3 className="text-2xl font-bold">AI 面试官追问</h3>
+                 <p className="text-muted-foreground">基于您的简历内容，预测面试官最感兴趣的 6 个问题</p>
+               </div>
              </div>
           </div>
-  
+
           {/* Preparation Tips Section */}
           {interviewResult?.preparationTips && (
              <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-white dark:from-purple-950/30 dark:to-background border border-purple-100 dark:border-purple-800 rounded-2xl flex gap-4 shadow-sm">
@@ -506,19 +509,20 @@ export default function AnalysisResult() {
                 </div>
              </div>
           )}
-  
+
           {loadingInterview ? (
-              <div className="space-y-4">
-                  {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="h-32 rounded-xl bg-card border shadow-sm animate-pulse flex flex-col justify-center p-6 gap-3">
-                         <div className="flex gap-3 mb-2">
-                             <div className="w-16 h-5 bg-muted/50 rounded-full" />
-                             <div className="w-20 h-5 bg-muted/50 rounded-full" />
-                         </div>
-                         <div className="w-3/4 h-6 bg-muted/50 rounded" />
-                         <div className="w-1/2 h-4 bg-muted/30 rounded" />
+              <div className="flex flex-col items-center justify-center py-20 bg-gradient-to-b from-purple-50/50 to-transparent dark:from-purple-950/20 rounded-2xl border border-purple-100 dark:border-purple-800">
+                  <div className="relative w-20 h-20 mb-6">
+                      {/* 旋转的外圈 */}
+                      <div className="absolute inset-0 rounded-full border-4 border-purple-200 dark:border-purple-800" />
+                      <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-purple-500 animate-spin" />
+                      {/* 中心图标 */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                          <Sparkles className="w-8 h-8 text-purple-500 animate-pulse" />
                       </div>
-                  ))}
+                  </div>
+                  <h4 className="text-xl font-bold text-purple-700 dark:text-purple-300 mb-2">AI 正在分析...</h4>
+                  <p className="text-muted-foreground text-sm">正在根据您的简历生成面试问题</p>
               </div>
           ) : interviewError ? (
               <div className="flex flex-col items-center justify-center py-12 bg-secondary/20 rounded-xl">
@@ -550,28 +554,7 @@ export default function AnalysisResult() {
                     {interviewError.message}
                   </p>
                   <button
-                    onClick={() => {
-                      setInterviewError(null);
-                      interviewRequestStartedRef.current = false;
-                      setLoadingInterview(true);
-                      resumeApi.predictInterview({
-                        resumeContent: resumeContent!,
-                        industryId: selectedIndustry || 'general',
-                      })
-                      .then(res => {
-                        setInterviewResult(res);
-                      })
-                      .catch(err => {
-                        if (err instanceof RateLimitError) {
-                          setInterviewError({ message: err.message, isRateLimit: true });
-                        } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-                          setInterviewError({ message: 'AI 生成面试问题需要较长时间，请稍后重试', isTimeout: true });
-                        } else {
-                          setInterviewError({ message: err.message || '面试预测失败，请重试' });
-                        }
-                      })
-                      .finally(() => setLoadingInterview(false));
-                    }}
+                    onClick={handleGenerateInterview}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-medium hover:shadow-lg transition-all",
                       interviewError.isRateLimit ? "bg-orange-500 hover:bg-orange-600" :
@@ -584,9 +567,27 @@ export default function AnalysisResult() {
                   </button>
               </div>
           ) : interviewResult ? (
-              <div className="space-y-4">
+              <motion.div
+                  className="space-y-4"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                      hidden: { opacity: 0 },
+                      visible: {
+                          opacity: 1,
+                          transition: { staggerChildren: 0.12 }
+                      }
+                  }}
+              >
                   {interviewResult.questions.map((q, i) => (
-                      <div key={i} className="bg-card border rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-purple-200 dark:hover:border-purple-800 transition-all group">
+                      <motion.div
+                          key={i}
+                          variants={{
+                              hidden: { opacity: 0, y: 20 },
+                              visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+                          }}
+                          className="bg-card border rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
+                      >
                           <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
                               <div className="flex-1 space-y-3 w-full">
                                   {/* Header: Tags */}
@@ -597,22 +598,22 @@ export default function AnalysisResult() {
                                           (q.difficulty?.includes('Medium') || q.difficulty?.includes('中')) ? "bg-yellow-50 text-yellow-600 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800" :
                                           "bg-green-50 text-green-600 border-green-200 dark:bg-green-900/20 dark:border-green-800"
                                       )}>
-                                          {(q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? <AlertTriangle className="w-3 h-3" /> : 
+                                          {(q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? <AlertTriangle className="w-3 h-3" /> :
                                            (q.difficulty?.includes('Medium') || q.difficulty?.includes('中')) ? <Target className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                                          
-                                          {(q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? '高难度' : 
+
+                                          {(q.difficulty?.includes('High') || q.difficulty?.includes('高') || q.difficulty?.includes('困难')) ? '高难度' :
                                            (q.difficulty?.includes('Medium') || q.difficulty?.includes('中')) ? '中等难度' : '基础题'}
                                       </span>
                                       <span className="text-xs font-medium text-muted-foreground px-2.5 py-1 bg-secondary rounded-md border border-transparent">
                                           {q.category}
                                       </span>
                                   </div>
-  
+
                                   {/* Question */}
                                   <h4 className="text-lg font-bold text-foreground/90 leading-snug">
                                       {q.question}
                                   </h4>
-                                  
+
                                   {/* Reason */}
                                   <div className="flex gap-3 text-sm text-muted-foreground bg-secondary/30 p-3.5 rounded-xl border border-transparent group-hover:border-border/50 transition-colors">
                                       <Target className="w-4 h-4 mt-0.5 shrink-0 text-purple-500" />
@@ -622,14 +623,14 @@ export default function AnalysisResult() {
                                       </span>
                                   </div>
                               </div>
-  
+
                               {/* Action Button */}
                               <div className="shrink-0 pt-1 w-full md:w-auto">
-                                  <button 
+                                  <button
                                       onClick={() => setExpandedQuestion(expandedQuestion === i ? null : i)}
                                       className={cn(
                                           "flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all w-full md:w-auto border",
-                                          expandedQuestion === i 
+                                          expandedQuestion === i
                                               ? "bg-purple-100 border-purple-200 text-purple-700 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-300 shadow-inner"
                                               : "bg-background border-border hover:bg-secondary text-foreground hover:border-secondary-foreground/20"
                                       )}
@@ -640,9 +641,9 @@ export default function AnalysisResult() {
                                   </button>
                               </div>
                           </div>
-  
+
                           {/* Expandable Tips */}
-                          <motion.div 
+                          <motion.div
                               initial={false}
                               animate={{
                                   height: expandedQuestion === i ? 'auto' : 0,
@@ -665,12 +666,26 @@ export default function AnalysisResult() {
                                   </div>
                               </div>
                           </motion.div>
-                      </div>
+                      </motion.div>
                   ))}
-              </div>
+              </motion.div>
           ) : (
-              <div className="text-center py-8 text-muted-foreground bg-secondary/20 rounded-xl">
-                  未能生成面试预测
+              /* 初始状态：显示生成按钮 */
+              <div className="flex flex-col items-center justify-center py-16 bg-gradient-to-b from-purple-50/50 to-transparent dark:from-purple-950/20 rounded-2xl border border-dashed border-purple-200 dark:border-purple-800">
+                  <div className="w-20 h-20 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-6">
+                      <MessageSquare className="w-10 h-10 text-purple-500" />
+                  </div>
+                  <h4 className="text-xl font-bold mb-2">预测面试问题</h4>
+                  <p className="text-muted-foreground text-center mb-6 max-w-md">
+                      AI 将根据您的简历内容，预测面试官可能会问的 6 个问题，并提供回答建议
+                  </p>
+                  <button
+                    onClick={handleGenerateInterview}
+                    className="flex items-center gap-2 px-8 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    生成面试问题
+                  </button>
               </div>
           )}
         </div>
