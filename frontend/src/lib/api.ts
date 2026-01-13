@@ -1,4 +1,15 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+
+// 自定义错误类型
+export class RateLimitError extends Error {
+  retryAfterSeconds?: number;
+
+  constructor(message: string, retryAfterSeconds?: number) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
 
 // 配置 axios 实例
 const api = axios.create({
@@ -12,9 +23,19 @@ const api = axios.create({
 // 响应拦截器：统一处理错误
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // 这里可以添加全局错误提示逻辑
+  (error: AxiosError<{ message?: string; code?: string; retryAfterSeconds?: number }>) => {
     console.error('API Error:', error);
+
+    // 处理 429 Too Many Requests 错误
+    if (error.response?.status === 429) {
+      const data = error.response.data;
+      const retryAfter = data?.retryAfterSeconds ||
+        parseInt(error.response.headers['retry-after'] || '30', 10);
+      const message = data?.message || 'AI 服务请求过于频繁，请稍后重试';
+
+      return Promise.reject(new RateLimitError(message, retryAfter));
+    }
+
     return Promise.reject(error);
   }
 );
@@ -32,13 +53,19 @@ export interface AnalyzeRequest {
   industryId: string;
 }
 
+export interface ImprovementItem {
+  problem: string;
+  original: string;
+  example: string;
+}
+
 export interface AnalyzeResponse {
   score: number;
   level: string;
   dimensions: DimensionScore[];
   comment: string;
   strengths: string[];
-  improvements: string[];
+  improvements: ImprovementItem[];
   atsScore: number;
   missingKeywords: string[];
 }
@@ -120,6 +147,7 @@ export interface SseProgressData {
 export interface SseErrorData {
   message: string;
   code?: string;
+  retryAfterSeconds?: number;
 }
 
 export type AnalyzeStreamCallback = {
@@ -135,6 +163,49 @@ export type PolishStreamCallback = {
   onComplete?: (result: PolishResponse) => void;
   onError?: (error: SseErrorData) => void;
 };
+
+// --- Helper Function ---
+
+/**
+ * 统一处理流式响应错误 (包含 429 处理)
+ */
+async function handleStreamResponse(
+  response: Response, 
+  onError?: (error: SseErrorData) => void
+): Promise<ReadableStreamDefaultReader<Uint8Array> | null> {
+  console.log('[API] Stream fetch 响应状态:', response.status, response.ok);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+
+    // 处理 429 错误
+    if (response.status === 429) {
+      const retryAfter = errorData.retryAfterSeconds ||
+        parseInt(response.headers.get('Retry-After') || '30', 10);
+      
+      onError?.({
+        message: errorData.message || 'AI 服务请求过于频繁，请稍后重试',
+        code: 'RATE_LIMIT_EXCEEDED',
+        retryAfterSeconds: retryAfter
+      });
+      return null;
+    }
+
+    onError?.({ 
+      message: errorData.message || `请求失败 (${response.status})`, 
+      code: 'HTTP_ERROR' 
+    });
+    return null;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    onError?.({ message: '无法读取响应流', code: 'STREAM_ERROR' });
+    return null;
+  }
+
+  return reader;
+}
 
 // --- API Functions ---
 
@@ -185,19 +256,8 @@ export const resumeApi = {
           signal: controller.signal,
         });
 
-        console.log('[API] fetch 响应状态:', response.status, response.ok);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          callbacks.onError?.({ message: errorData.message || '请求失败', code: 'HTTP_ERROR' });
-          return;
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          callbacks.onError?.({ message: '无法读取响应流', code: 'STREAM_ERROR' });
-          return;
-        }
+        const reader = await handleStreamResponse(response, callbacks.onError);
+        if (!reader) return;
 
         console.log('[API] 开始读取 SSE 流...');
         const decoder = new TextDecoder();
@@ -312,19 +372,8 @@ export const resumeApi = {
           signal: controller.signal,
         });
 
-        console.log('[API] polish-stream 响应状态:', response.status, response.ok);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          callbacks.onError?.({ message: errorData.message || '请求失败', code: 'HTTP_ERROR' });
-          return;
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          callbacks.onError?.({ message: '无法读取响应流', code: 'STREAM_ERROR' });
-          return;
-        }
+        const reader = await handleStreamResponse(response, callbacks.onError);
+        if (!reader) return;
 
         console.log('[API] 开始读取润色 SSE 流...');
         const decoder = new TextDecoder();
@@ -413,7 +462,9 @@ export const resumeApi = {
    * 面试预测
    */
   predictInterview: async (data: InterviewRequest): Promise<InterviewResponse> => {
-    const response = await api.post<InterviewResponse>('/Resume/interview', data);
+    const response = await api.post<InterviewResponse>('/Resume/interview', data, {
+      timeout: 180000, // 面试预测需要更长时间，设置 180s 超时
+    });
     return response.data;
   }
 };

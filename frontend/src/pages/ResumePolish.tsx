@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Download, ArrowLeft, Sparkles, Home, AlertCircle } from 'lucide-react';
+import { Download, ArrowLeft, Sparkles, Home, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
-import { resumeApi, PolishResponse, SseProgressData, PolishChange } from '@/lib/api';
+import { resumeApi, PolishResponse, SseProgressData, PolishChange, SseErrorData } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 /**
@@ -219,7 +219,7 @@ export default function ResumePolish() {
   const { resumeContent, uploadedFile, selectedIndustry } = useResumeStore();
   const [isPolishing, setIsPolishing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SseErrorData | null>(null);
   const [result, setResult] = useState<PolishResponse | null>(null);
   const [viewMode, setViewMode] = useState<'text' | 'file'>(uploadedFile ? 'file' : 'text');
   const [progress, setProgress] = useState<SseProgressData | null>(null);
@@ -287,7 +287,7 @@ export default function ResumePolish() {
           setProgress(null);
         },
         onError: (err) => {
-          setError(err.message || '润色失败，请重试');
+          setError(err);
           setIsPolishing(false);
           setProgress(null);
           initialized.current = false;
@@ -416,11 +416,33 @@ export default function ResumePolish() {
             <div className="flex-1 overflow-hidden relative">
               {error ? (
                 <div className="flex flex-col items-center justify-center h-full p-6">
-                  <AlertCircle className="w-16 h-16 text-destructive mb-4" />
-                  <p className="text-destructive mb-4">{error}</p>
+                  {error.code === 'RATE_LIMIT_EXCEEDED' ? (
+                    <>
+                      <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-4">
+                        <Clock className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-2">请求过于频繁</h3>
+                      <p className="text-muted-foreground text-center mb-2 text-sm">{error.message}</p>
+                      {error.retryAfterSeconds && (
+                        <p className="text-xs text-muted-foreground mb-4">
+                          建议等待 <span className="font-bold text-orange-500">{error.retryAfterSeconds}</span> 秒后重试
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+                      <p className="text-destructive mb-4">{error.message}</p>
+                    </>
+                  )}
                   <button
                     onClick={() => navigate('/result')}
-                    className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg transition-all"
+                    className={cn(
+                      "px-6 py-2 rounded-full text-white hover:shadow-lg transition-all",
+                      error.code === 'RATE_LIMIT_EXCEEDED'
+                        ? "bg-orange-500 hover:bg-orange-600"
+                        : "bg-primary text-primary-foreground"
+                    )}
                   >
                     返回分析报告
                   </button>

@@ -41,7 +41,15 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
                 Comment = "分析服务暂时不可用，请稍后重试。",
                 Dimensions = new List<DimensionScore>(),
                 Strengths = new List<string>(),
-                Improvements = new List<string> { "请稍后重试分析功能" }
+                Improvements = new List<ImprovementItem> 
+                { 
+                    new ImprovementItem 
+                    { 
+                        Problem = "分析服务异常", 
+                        Original = "N/A", 
+                        Example = "请稍后重试" 
+                    } 
+                }
             };
         }
 

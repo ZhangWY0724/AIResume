@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ResumeAlchemist.Core.Exceptions;
 using ResumeAlchemist.Core.Interfaces;
 
 namespace ResumeAlchemist.Infrastructure.AI;
@@ -57,6 +59,17 @@ public class ZhipuAIClient : IZhipuAIClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync("chat/completions", request, cancellationToken);
+
+            // 检查 429 Too Many Requests 错误
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+                _logger.LogWarning("AI 服务请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
+                throw new AIRateLimitException(
+                    "AI 服务请求过于频繁，请稍后重试",
+                    retryAfter.HasValue ? (int)retryAfter.Value : 30);
+            }
+
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<ZhipuChatResponse>(cancellationToken: cancellationToken);
@@ -107,6 +120,17 @@ public class ZhipuAIClient : IZhipuAIClient
         try
         {
             response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+            // 检查 429 Too Many Requests 错误
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+                _logger.LogWarning("AI 流式服务请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
+                throw new AIRateLimitException(
+                    "AI 服务请求过于频繁，请稍后重试",
+                    retryAfter.HasValue ? (int)retryAfter.Value : 30);
+            }
+
             response.EnsureSuccessStatusCode();
         }
         catch (HttpRequestException ex)

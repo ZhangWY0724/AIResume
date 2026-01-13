@@ -56,4 +56,9 @@ public class SseErrorData
     /// 错误代码
     /// </summary>
     public string? Code { get; set; }
+
+    /// <summary>
+    /// 建议的重试等待时间（秒），用于频率限制错误
+    /// </summary>
+    public int? RetryAfterSeconds { get; set; }
 }

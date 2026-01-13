@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using Microsoft.AspNetCore.Mvc;
+using ResumeAlchemist.Core.Exceptions;
 using ResumeAlchemist.Core.Interfaces;
 using ResumeAlchemist.Core.Services;
 using ResumeAlchemist.Shared.Constants;
@@ -162,19 +163,39 @@ public class ResumeController : ControllerBase
 
             _logger.LogInformation("流式分析完成，评分: {Score}", result.Score);
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("流式分析被取消");
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "流式分析出错");
-            await SendSseEvent("error", new SseErrorData
-            {
-                Message = "分析过程中发生错误，请重试",
-                Code = "INTERNAL_ERROR"
-            }, jsonOptions, cancellationToken);
+            await HandleSseErrorAsync(ex, jsonOptions, cancellationToken);
         }
+    }
+
+    private async Task HandleSseErrorAsync(Exception ex, JsonSerializerOptions jsonOptions, CancellationToken cancellationToken)
+    {
+        if (ex is OperationCanceledException)
+        {
+            _logger.LogInformation("流式请求被取消");
+            return;
+        }
+
+        var errorData = new SseErrorData
+        {
+            Code = "INTERNAL_ERROR",
+            Message = "处理过程中发生错误，请重试"
+        };
+
+        if (ex is AIRateLimitException rateLimitEx)
+        {
+            _logger.LogWarning(ex, "流式请求遇到 AI 服务频率限制");
+            errorData.Code = "RATE_LIMIT_EXCEEDED";
+            errorData.Message = rateLimitEx.Message;
+            errorData.RetryAfterSeconds = rateLimitEx.RetryAfterSeconds;
+        }
+        else
+        {
+            _logger.LogError(ex, "流式请求出错");
+        }
+
+        await SendSseEvent("error", errorData, jsonOptions, cancellationToken);
     }
 
     private async Task SendSseEvent<T>(string eventType, T data, JsonSerializerOptions options, CancellationToken cancellationToken)
@@ -304,18 +325,9 @@ public class ResumeController : ControllerBase
 
             _logger.LogInformation("流式润色完成，修改项: {Count}", result.Changes.Count);
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("流式润色被取消");
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "流式润色出错");
-            await SendSseEvent("error", new SseErrorData
-            {
-                Message = "润色过程中发生错误，请重试",
-                Code = "INTERNAL_ERROR"
-            }, jsonOptions, cancellationToken);
+            await HandleSseErrorAsync(ex, jsonOptions, cancellationToken);
         }
     }
 

@@ -4,6 +4,7 @@ using System.Text.Unicode;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.OpenApi.Models;
+using ResumeAlchemist.Api.Middleware;
 using ResumeAlchemist.Core.Interfaces;
 using ResumeAlchemist.Core.Services;
 using ResumeAlchemist.Infrastructure.AI;
@@ -78,6 +79,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "简历炼金术 API v1"));
 }
+
+// 全局异常处理中间件（应在其他中间件之前）
+app.UseExceptionHandling();
 
 app.UseSerilogRequestLogging();
 

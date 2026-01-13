@@ -49,7 +49,7 @@ public class AnalyzeResponse
     /// <summary>
     /// 改进建议列表
     /// </summary>
-    public List<string> Improvements { get; set; } = new();
+    public List<ImprovementItem> Improvements { get; set; } = new();
 
     /// <summary>
     /// ATS 友好度评分 (0-100)
@@ -60,6 +60,27 @@ public class AnalyzeResponse
     /// 缺失的行业关键词
     /// </summary>
     public List<string> MissingKeywords { get; set; } = new();
+}
+
+/// <summary>
+/// 改进项详情
+/// </summary>
+public class ImprovementItem
+{
+    /// <summary>
+    /// 问题描述
+    /// </summary>
+    public string Problem { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 原文片段 (可能为空)
+    /// </summary>
+    public string Original { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 优化示范
+    /// </summary>
+    public string Example { get; set; } = string.Empty;
 }
 
 /// <summary>
