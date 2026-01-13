@@ -25,7 +25,7 @@ export default function RadarChart({ data }: RadarChartProps) {
   return (
     <div className="w-full h-[300px] md:h-[350px]">
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsRadar outerRadius="70%" data={chartData}>
+        <RechartsRadar outerRadius="60%" data={chartData}>
           <PolarGrid stroke="hsl(var(--border))" />
           <PolarAngleAxis 
             dataKey="subject" 

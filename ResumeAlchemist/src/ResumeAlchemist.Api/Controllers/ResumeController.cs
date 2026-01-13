@@ -278,40 +278,35 @@ public class ResumeController : ControllerBase
                 Message = "AI 正在优化您的简历..."
             }, jsonOptions, cancellationToken);
 
-            await foreach (var chunk in _polisherService.PolishStreamAsync(request, cancellationToken))
-            {
-                responseBuilder.Append(chunk);
+            var fullResponse = new PolishResponse();
+            var contentBuilder = new StringBuilder();
 
-                // 每收到一些内容就更新进度
-                var estimatedProgress = Math.Min(90, 10 + (responseBuilder.Length / 100));
-                if (estimatedProgress > lastProgressSent + 5)
+            await foreach (var evt in _polisherService.PolishStreamAsync(request, cancellationToken))
+            {
+                switch (evt.Type)
                 {
-                    lastProgressSent = estimatedProgress;
-                    await SendSseEvent("progress", new SseProgressData
-                    {
-                        Percentage = estimatedProgress,
-                        Stage = "润色中",
-                        Message = "正在生成润色内容..."
-                    }, jsonOptions, cancellationToken);
+                    case PolishEventType.Summary:
+                        fullResponse.Summary = evt.Data?.ToString() ?? "";
+                        await SendSseEvent("summary", fullResponse.Summary, jsonOptions, cancellationToken);
+                        break;
+                    
+                    case PolishEventType.Change:
+                        if (evt.Data is PolishChange change)
+                        {
+                            fullResponse.Changes.Add(change);
+                            await SendSseEvent("change", change, jsonOptions, cancellationToken);
+                        }
+                        break;
+                    
+                    case PolishEventType.ContentChunk:
+                        var chunk = evt.Data?.ToString() ?? "";
+                        contentBuilder.Append(chunk);
+                        await SendSseEvent("content_chunk", chunk, jsonOptions, cancellationToken);
+                        break;
                 }
-
-                // 发送原始内容片段
-                await SendSseEvent("chunk", new { content = chunk }, jsonOptions, cancellationToken);
             }
 
-            // 解析完整响应
-            var fullResponse = responseBuilder.ToString();
-            var result = JsonHelper.ParseAIResponse<PolishResponse>(fullResponse, _logger);
-
-            if (result == null)
-            {
-                await SendSseEvent("error", new SseErrorData
-                {
-                    Message = "AI 响应解析失败",
-                    Code = "PARSE_ERROR"
-                }, jsonOptions, cancellationToken);
-                return;
-            }
+            fullResponse.PolishedContent = contentBuilder.ToString();
 
             // 发送完成事件
             await SendSseEvent("progress", new SseProgressData
@@ -321,9 +316,9 @@ public class ResumeController : ControllerBase
                 Message = "润色完成！"
             }, jsonOptions, cancellationToken);
 
-            await SendSseEvent("complete", result, jsonOptions, cancellationToken);
+            await SendSseEvent("complete", fullResponse, jsonOptions, cancellationToken);
 
-            _logger.LogInformation("流式润色完成，修改项: {Count}", result.Changes.Count);
+            _logger.LogInformation("流式润色完成，修改项: {Count}", fullResponse.Changes.Count);
         }
         catch (Exception ex)
         {

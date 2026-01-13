@@ -159,7 +159,9 @@ export type AnalyzeStreamCallback = {
 
 export type PolishStreamCallback = {
   onProgress?: (data: SseProgressData) => void;
-  onChunk?: (content: string) => void;
+  onSummary?: (summary: string) => void;
+  onChange?: (change: PolishChange) => void;
+  onContentChunk?: (chunk: string) => void;
   onComplete?: (result: PolishResponse) => void;
   onError?: (error: SseErrorData) => void;
 };
@@ -408,8 +410,14 @@ export const resumeApi = {
                      case 'progress':
                        callbacks.onProgress?.(eventData as SseProgressData);
                        break;
-                     case 'chunk':
-                       callbacks.onChunk?.(eventData.content);
+                     case 'summary':
+                       callbacks.onSummary?.(eventData as string);
+                       break;
+                     case 'change':
+                       callbacks.onChange?.(eventData as PolishChange);
+                       break;
+                     case 'content_chunk':
+                       callbacks.onContentChunk?.(eventData as string);
                        break;
                      case 'complete':
                        console.log('[API] 触发润色 onComplete 回调');

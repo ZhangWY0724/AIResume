@@ -62,3 +62,22 @@ public class SseErrorData
     /// </summary>
     public int? RetryAfterSeconds { get; set; }
 }
+
+/// <summary>
+/// 润色流式事件类型
+/// </summary>
+public enum PolishEventType
+{
+    Summary,
+    Change,
+    ContentChunk
+}
+
+/// <summary>
+/// 润色流式事件数据包
+/// </summary>
+public class PolishStreamEvent
+{
+    public PolishEventType Type { get; set; }
+    public object Data { get; set; } = new();
+}

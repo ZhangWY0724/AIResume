@@ -3,41 +3,8 @@ import { motion } from 'framer-motion';
 import { Download, ArrowLeft, Sparkles, Home, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
-import { resumeApi, PolishResponse, SseProgressData, PolishChange, SseErrorData } from '@/lib/api';
+import { resumeApi, SseProgressData, PolishChange, SseErrorData } from '@/lib/api';
 import { cn } from '@/lib/utils';
-
-/**
- * 从流式 JSON 内容中实时提取 polishedContent 的值
- */
-function extractPolishedContent(rawContent: string): string {
-  const startMatch = rawContent.match(/"polishedContent"\s*:\s*"/);
-  if (!startMatch || startMatch.index === undefined) return '';
-
-  const startIndex = startMatch.index + startMatch[0].length;
-  const content = rawContent.substring(startIndex);
-
-  let result = '';
-  let i = 0;
-  while (i < content.length) {
-    if (content[i] === '\\' && i + 1 < content.length) {
-      const nextChar = content[i + 1];
-      if (nextChar === 'n') result += '\n';
-      else if (nextChar === 't') result += '\t';
-      else if (nextChar === 'r') result += '';
-      else if (nextChar === '"') result += '"';
-      else if (nextChar === '\\') result += '\\';
-      else result += nextChar;
-      i += 2;
-    } else if (content[i] === '"') {
-      break;
-    } else {
-      result += content[i];
-      i++;
-    }
-  }
-
-  return result;
-}
 
 /**
  * 在内容中查找文本的位置，支持多种匹配策略
@@ -220,10 +187,14 @@ export default function ResumePolish() {
   const [isPolishing, setIsPolishing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [error, setError] = useState<SseErrorData | null>(null);
-  const [result, setResult] = useState<PolishResponse | null>(null);
+  
+  // State for streaming
+  const [streamedContent, setStreamedContent] = useState('');
+  const [streamedChanges, setStreamedChanges] = useState<PolishChange[]>([]);
+  const [summary, setSummary] = useState('');
+  
   const [viewMode, setViewMode] = useState<'text' | 'file'>(uploadedFile ? 'file' : 'text');
   const [progress, setProgress] = useState<SseProgressData | null>(null);
-  const [streamedContent, setStreamedContent] = useState('');
   const [activeAnnotation, setActiveAnnotation] = useState<number | null>(null);
 
   // 引用
@@ -232,14 +203,10 @@ export default function ResumePolish() {
   const textContainerRef = useRef<HTMLDivElement>(null);
   const annotationContainerRef = useRef<HTMLDivElement>(null);
 
-  const displayContent = useMemo(() => {
-    return extractPolishedContent(streamedContent);
-  }, [streamedContent]);
-
+  // 实时分段逻辑：使用流式内容和流式修改记录
   const contentSegments = useMemo(() => {
-    if (!isCompleted || !result) return [];
-    return segmentContent(result.polishedContent, result.changes);
-  }, [isCompleted, result]);
+    return segmentContent(streamedContent, streamedChanges);
+  }, [streamedContent, streamedChanges]);
 
   const originalContent = resumeContent || "（此处应显示您的原始简历内容...）";
 
@@ -267,6 +234,8 @@ export default function ResumePolish() {
     setError(null);
     setProgress({ percentage: 0, stage: '准备中', message: '正在初始化...' });
     setStreamedContent('');
+    setStreamedChanges([]);
+    setSummary('');
 
     resumeApi.polishStream(
       {
@@ -277,11 +246,18 @@ export default function ResumePolish() {
         onProgress: (data) => {
           setProgress(data);
         },
-        onChunk: (content) => {
-          setStreamedContent(prev => prev + content);
+        onSummary: (data) => {
+          setSummary(data);
+        },
+        onChange: (change) => {
+          setStreamedChanges(prev => [...prev, change]);
+        },
+        onContentChunk: (chunk) => {
+          setStreamedContent(prev => prev + chunk);
         },
         onComplete: (response) => {
-          setResult(response);
+          // 确保状态同步
+          setStreamedContent(response.polishedContent);
           setIsCompleted(true);
           setIsPolishing(false);
           setProgress(null);
@@ -434,7 +410,7 @@ export default function ResumePolish() {
                       <AlertCircle className="w-16 h-16 text-destructive mb-4" />
                       <p className="text-destructive mb-4">{error.message}</p>
                     </>
-                  )}
+                  )})
                   <button
                     onClick={() => navigate('/result')}
                     className={cn(
@@ -447,60 +423,56 @@ export default function ResumePolish() {
                     返回分析报告
                   </button>
                 </div>
-              ) : isPolishing && !isCompleted ? (
-                <div className="h-full overflow-y-auto p-4">
-                  <div className="prose prose-sm max-w-none text-foreground font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                    {displayContent || (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        <span>{progress?.message || '正在等待 AI 响应...'}</span>
-                      </div>
-                    )}
-                    {displayContent && (
-                      <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5" />
-                    )}
-                  </div>
-                </div>
-              ) : isCompleted && result ? (
+              ) : (
                 <div
                   ref={textContainerRef}
                   className="h-full overflow-y-auto p-4"
                 >
-                  <div className="prose prose-sm max-w-none text-foreground font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                    {contentSegments.map((segment, idx) => (
-                      segment.changeIndex !== null ? (
-                        <span
-                          key={idx}
-                          ref={(el) => {
-                            if (el) textRefs.current.set(segment.changeIndex!, el);
-                          }}
-                          className={cn(
-                            "font-bold relative cursor-pointer transition-all duration-200 px-0.5 -mx-0.5 rounded",
-                            activeAnnotation === segment.changeIndex
-                              ? "bg-primary/20 text-primary"
-                              : "bg-yellow-100/50 hover:bg-yellow-100"
-                          )}
-                          onMouseEnter={() => setActiveAnnotation(segment.changeIndex)}
-                          onMouseLeave={() => setActiveAnnotation(null)}
-                        >
-                          {segment.text}
-                          {/* 小标记 */}
-                          <sup className={cn(
-                            "text-[9px] font-normal ml-0.5 transition-colors",
-                            activeAnnotation === segment.changeIndex ? "text-primary" : "text-muted-foreground"
-                          )}>
-                            [{segment.changeIndex! + 1}]
-                          </sup>
-                        </span>
-                      ) : (
-                        <span key={idx}>{segment.text}</span>
-                      )
-                    ))}
+                  <div className="prose prose-sm max-w-none text-foreground font-mono text-xs ">
+                    {contentSegments.length > 0 ? (
+                      contentSegments.map((segment, idx) => (
+                        segment.changeIndex !== null ? (
+                          <span
+                            key={idx}
+                            ref={(el) => {
+                              if (el) textRefs.current.set(segment.changeIndex!, el);
+                            }}
+                            className={cn(
+                              "font-bold relative cursor-pointer transition-all duration-200 px-0.5 -mx-0.5 rounded",
+                              activeAnnotation === segment.changeIndex
+                                ? "bg-primary/20 text-primary"
+                                : "bg-yellow-100/50 hover:bg-yellow-100"
+                            )}
+                            onMouseEnter={() => setActiveAnnotation(segment.changeIndex)}
+                            onMouseLeave={() => setActiveAnnotation(null)}
+                          >
+                            {segment.text}
+                            {/* 小标记 */}
+                            <sup className={cn(
+                              "text-[9px] font-normal ml-0.5 transition-colors",
+                              activeAnnotation === segment.changeIndex ? "text-primary" : "text-muted-foreground"
+                            )}>
+                              [{segment.changeIndex! + 1}]
+                            </sup>
+                          </span>
+                        ) : (
+                          <span key={idx}>{segment.text}</span>
+                        )
+                      ))
+                    ) : (
+                      // 加载状态或初始空状态
+                      isPolishing ? (
+                         <div className="flex items-center gap-2 text-muted-foreground">
+                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span>{progress?.message || '正在等待 AI 响应...'}</span>
+                         </div>
+                      ) : null
+                    )}
+                    {/* 打字机光标效果 */}
+                    {isPolishing && !isCompleted && (
+                      <span className="inline-block w-0.5 h-4 bg-primary animate-pulse ml-0.5 align-middle" />
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </div>
@@ -511,33 +483,39 @@ export default function ResumePolish() {
             <div className="p-3 border-b bg-muted/30 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="font-medium text-sm">优化说明</span>
-              {result && (
-                <span className="text-xs text-muted-foreground">({result.changes.length})</span>
-              )}
+              <span className="text-xs text-muted-foreground">({streamedChanges.length})</span>
             </div>
+            
+            {/* 摘要显示 */}
+            {summary && (
+               <div className="px-3 py-2 bg-primary/5 border-b text-xs text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-primary mr-1">总评:</span>
+                  {summary}
+               </div>
+            )}
 
             <div
               ref={annotationContainerRef}
               className="flex-1 overflow-y-auto p-3 space-y-3"
             >
-              {!isCompleted ? (
+              {!isPolishing && streamedChanges.length === 0 && !isCompleted ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
                   <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mb-2" />
                   <span>等待润色完成...</span>
                 </div>
-              ) : result?.changes.length === 0 ? (
-                <div className="text-center text-muted-foreground text-sm py-8">
-                  暂无优化说明
-                </div>
+              ) : streamedChanges.length === 0 && isPolishing ? (
+                 <div className="text-center text-muted-foreground text-xs py-8 animate-pulse">
+                    AI 正在思考优化点...
+                 </div>
               ) : (
-                result?.changes.map((change, idx) => (
+                streamedChanges.map((change, idx) => (
                   <div
                     key={idx}
                     ref={(el) => {
                       if (el) annotationRefs.current.set(idx, el);
                     }}
                     className={cn(
-                      "p-3 rounded-lg border text-xs transition-all duration-200 cursor-pointer",
+                      "p-3 rounded-lg border text-xs transition-all duration-200 cursor-pointer animate-in slide-in-from-right-4 fade-in duration-300",
                       activeAnnotation === idx
                         ? "bg-primary/5 border-primary/40 shadow-md ring-1 ring-primary/20"
                         : "bg-background border-border/60 hover:border-border hover:shadow-sm"
