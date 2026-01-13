@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { AnalyzeResponse } from '@/lib/api';
 
 interface ResumeState {
   // 行业选择
@@ -12,11 +13,22 @@ interface ResumeState {
   // 上传的文件信息 (用于展示)
   uploadedFile: File | null;
   setUploadedFile: (file: File | null) => void;
-  
+
   // 步骤控制
   currentStep: 'industry' | 'upload' | 'analysis' | 'result';
   setStep: (step: 'industry' | 'upload' | 'analysis' | 'result') => void;
+
+  // 分析结果缓存
+  analysisResult: AnalyzeResponse | null;
+  analysisContentHash: string | null; // 用于判断简历内容是否变化
+  setAnalysisResult: (result: AnalyzeResponse | null, contentHash?: string) => void;
+  clearAnalysisCache: () => void;
 }
+
+// 简单的内容哈希函数，用于判断简历内容是否变化
+const hashContent = (content: string, industryId: string | null): string => {
+  return `${industryId}:${content.length}:${content.substring(0, 100)}`;
+};
 
 export const useResumeStore = create<ResumeState>((set) => ({
   selectedIndustry: null,
@@ -30,4 +42,16 @@ export const useResumeStore = create<ResumeState>((set) => ({
 
   currentStep: 'industry',
   setStep: (step) => set({ currentStep: step }),
+
+  // 分析结果缓存
+  analysisResult: null,
+  analysisContentHash: null,
+  setAnalysisResult: (result, contentHash) => set({
+    analysisResult: result,
+    analysisContentHash: contentHash ?? null
+  }),
+  clearAnalysisCache: () => set({ analysisResult: null, analysisContentHash: null }),
 }));
+
+// 导出哈希函数供外部使用
+export { hashContent };

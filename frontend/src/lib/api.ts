@@ -109,6 +109,33 @@ export interface InterviewResponse {
   preparationTips: string;
 }
 
+// --- SSE Event Types ---
+
+export interface SseProgressData {
+  percentage: number;
+  stage: string;
+  message: string;
+}
+
+export interface SseErrorData {
+  message: string;
+  code?: string;
+}
+
+export type AnalyzeStreamCallback = {
+  onProgress?: (data: SseProgressData) => void;
+  onChunk?: (content: string) => void;
+  onComplete?: (result: AnalyzeResponse) => void;
+  onError?: (error: SseErrorData) => void;
+};
+
+export type PolishStreamCallback = {
+  onProgress?: (data: SseProgressData) => void;
+  onChunk?: (content: string) => void;
+  onComplete?: (result: PolishResponse) => void;
+  onError?: (error: SseErrorData) => void;
+};
+
 // --- API Functions ---
 
 export const resumeApi = {
@@ -136,11 +163,242 @@ export const resumeApi = {
   },
 
   /**
+   * 简历智能分析（SSE 流式响应）
+   * @param data 分析请求
+   * @param callbacks 回调函数
+   * @returns AbortController 用于取消请求
+   */
+  analyzeStream: (data: AnalyzeRequest, callbacks: AnalyzeStreamCallback): AbortController => {
+    const controller = new AbortController();
+
+    console.log('[API] analyzeStream 开始，请求数据:', data);
+
+    (async () => {
+      try {
+        console.log('[API] 发起 fetch 请求...');
+        const response = await fetch('/api/Resume/analyze-stream', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+          signal: controller.signal,
+        });
+
+        console.log('[API] fetch 响应状态:', response.status, response.ok);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          callbacks.onError?.({ message: errorData.message || '请求失败', code: 'HTTP_ERROR' });
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          callbacks.onError?.({ message: '无法读取响应流', code: 'STREAM_ERROR' });
+          return;
+        }
+
+        console.log('[API] 开始读取 SSE 流...');
+        const decoder = new TextDecoder();
+        
+        let buffer = '';
+        let currentEvent = '';
+        let currentData = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log('[API] SSE 流读取完成');
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Split by double newline to separate event blocks if possible, 
+          // but robust parsing processes line by line
+          const lines = buffer.split(/\r?\n/);
+          // Keep the last partial line in the buffer
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim() === '') {
+              // Empty line triggers dispatch
+              if (currentData) {
+                try {
+                   // Dispatch logic
+                   const jsonStr = currentData;
+                   console.log(`[API] Dispatching event: ${currentEvent || 'message'}`);
+                   
+                   const eventData = JSON.parse(jsonStr);
+                   const type = currentEvent || 'message';
+
+                   switch (type) {
+                     case 'progress':
+                       callbacks.onProgress?.(eventData as SseProgressData);
+                       break;
+                     case 'chunk':
+                       callbacks.onChunk?.(eventData.content);
+                       break;
+                     case 'complete':
+                       console.log('[API] 触发 onComplete 回调');
+                       callbacks.onComplete?.(eventData as AnalyzeResponse);
+                       break;
+                     case 'error':
+                       callbacks.onError?.(eventData as SseErrorData);
+                       break;
+                     default:
+                       console.log('[API] Unhandled event type:', type);
+                   }
+                } catch (e) {
+                   console.warn('解析 SSE 数据失败:', currentData, e);
+                }
+              }
+              // Reset state for next event
+              currentEvent = '';
+              currentData = '';
+              continue;
+            }
+
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              // SSE spec: if multiple data lines, join with newline
+              const content = line.slice(5).trim();
+              currentData += (currentData ? '\n' : '') + content;
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('SSE 请求已取消');
+          return;
+        }
+        callbacks.onError?.({ message: error.message || '网络错误', code: 'NETWORK_ERROR' });
+      }
+    })();
+
+    return controller;
+  },
+
+  /**
    * 简历润色
    */
   polish: async (data: PolishRequest): Promise<PolishResponse> => {
     const response = await api.post<PolishResponse>('/Resume/polish', data);
     return response.data;
+  },
+
+  /**
+   * 简历润色（SSE 流式响应）
+   * @param data 润色请求
+   * @param callbacks 回调函数
+   * @returns AbortController 用于取消请求
+   */
+  polishStream: (data: PolishRequest, callbacks: PolishStreamCallback): AbortController => {
+    const controller = new AbortController();
+
+    console.log('[API] polishStream 开始，请求数据:', data);
+
+    (async () => {
+      try {
+        console.log('[API] 发起 polish-stream fetch 请求...');
+        const response = await fetch('/api/Resume/polish-stream', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+          signal: controller.signal,
+        });
+
+        console.log('[API] polish-stream 响应状态:', response.status, response.ok);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          callbacks.onError?.({ message: errorData.message || '请求失败', code: 'HTTP_ERROR' });
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          callbacks.onError?.({ message: '无法读取响应流', code: 'STREAM_ERROR' });
+          return;
+        }
+
+        console.log('[API] 开始读取润色 SSE 流...');
+        const decoder = new TextDecoder();
+
+        let buffer = '';
+        let currentEvent = '';
+        let currentData = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log('[API] 润色 SSE 流读取完成');
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim() === '') {
+              if (currentData) {
+                try {
+                   const jsonStr = currentData;
+                   console.log(`[API] Dispatching polish event: ${currentEvent || 'message'}`);
+
+                   const eventData = JSON.parse(jsonStr);
+                   const type = currentEvent || 'message';
+
+                   switch (type) {
+                     case 'progress':
+                       callbacks.onProgress?.(eventData as SseProgressData);
+                       break;
+                     case 'chunk':
+                       callbacks.onChunk?.(eventData.content);
+                       break;
+                     case 'complete':
+                       console.log('[API] 触发润色 onComplete 回调');
+                       callbacks.onComplete?.(eventData as PolishResponse);
+                       break;
+                     case 'error':
+                       callbacks.onError?.(eventData as SseErrorData);
+                       break;
+                     default:
+                       console.log('[API] Unhandled polish event type:', type);
+                   }
+                } catch (e) {
+                   console.warn('解析润色 SSE 数据失败:', currentData, e);
+                }
+              }
+              currentEvent = '';
+              currentData = '';
+              continue;
+            }
+
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              const content = line.slice(5).trim();
+              currentData += (currentData ? '\n' : '') + content;
+            }
+          }
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('润色 SSE 请求已取消');
+          return;
+        }
+        callbacks.onError?.({ message: error.message || '网络错误', code: 'NETWORK_ERROR' });
+      }
+    })();
+
+    return controller;
   },
 
   /**

@@ -11,4 +11,9 @@ public interface IResumePolisherService
     /// 润色简历
     /// </summary>
     Task<PolishResponse> PolishAsync(PolishRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 流式润色简历
+    /// </summary>
+    IAsyncEnumerable<string> PolishStreamAsync(PolishRequest request, CancellationToken cancellationToken = default);
 }

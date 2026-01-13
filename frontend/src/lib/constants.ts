@@ -51,7 +51,7 @@ export const INDUSTRIES = [
   },
   {
     id: 'hr',
-    name: 'HR',
+    name: '人力资源',
     icon: Users,
     description: '招聘/组织发展',
     color: 'text-red-500',

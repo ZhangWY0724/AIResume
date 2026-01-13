@@ -45,8 +45,12 @@ public static class JsonHelper
     {
         var result = content.Trim();
 
-        // 移除 ```json 和 ``` 包裹
+        // 移除 ```json 和 ``` 包裹（支持多种变体）
         if (result.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+        {
+            result = result[7..];
+        }
+        else if (result.StartsWith("```JSON", StringComparison.Ordinal))
         {
             result = result[7..];
         }
@@ -60,6 +64,17 @@ public static class JsonHelper
             result = result[..^3];
         }
 
-        return result.Trim();
+        result = result.Trim();
+
+        // 尝试提取第一个 { 到最后一个 } 之间的内容
+        var firstBrace = result.IndexOf('{');
+        var lastBrace = result.LastIndexOf('}');
+
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+        {
+            result = result[firstBrace..(lastBrace + 1)];
+        }
+
+        return result;
     }
 }

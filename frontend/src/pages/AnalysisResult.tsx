@@ -2,47 +2,98 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, Download, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useResumeStore } from '@/store/useResumeStore';
-import { resumeApi, AnalyzeResponse } from '@/lib/api';
+import { useResumeStore, hashContent } from '@/store/useResumeStore';
+import { resumeApi, AnalyzeResponse, SseProgressData } from '@/lib/api';
 import RadarChart from '@/components/RadarChart';
 import { cn } from '@/lib/utils';
 
 export default function AnalysisResult() {
-  const [loading, setLoading] = useState(true);
+  const {
+    resumeContent,
+    selectedIndustry,
+    analysisResult,
+    analysisContentHash,
+    setAnalysisResult
+  } = useResumeStore();
+
+  // 计算当前内容的哈希值，判断是否有有效缓存
+  const currentHash = resumeContent && selectedIndustry
+    ? hashContent(resumeContent, selectedIndustry)
+    : null;
+  const hasCachedResult = analysisResult && analysisContentHash === currentHash;
+
+  const [loading, setLoading] = useState(!hasCachedResult);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalyzeResponse | null>(null);
-  const { resumeContent, selectedIndustry } = useResumeStore();
+  const [result, setResult] = useState<AnalyzeResponse | null>(hasCachedResult ? analysisResult : null);
+  const [progress, setProgress] = useState<SseProgressData | null>(null);
   const navigate = useNavigate();
-  const initialized = useRef(false);
+  const requestStartedRef = useRef(false);
 
   useEffect(() => {
-    const analyzeResume = async () => {
-      if (!resumeContent || !selectedIndustry) {
-        navigate('/upload');
-        return;
+    // 如果已经有本地结果，不重复发起
+    if (result) {
+      return;
+    }
+
+    if (!resumeContent || !selectedIndustry) {
+      navigate('/upload');
+      return;
+    }
+
+    // 检查是否有有效的缓存结果（双重检查）
+    if (hasCachedResult && analysisResult) {
+      console.log('[AnalysisResult] 使用缓存的分析结果');
+      setResult(analysisResult);
+      setLoading(false);
+      return;
+    }
+
+    // 防止重复请求（包括 StrictMode 的双重渲染）
+    if (requestStartedRef.current) {
+      console.log('[AnalysisResult] 请求已在进行中，跳过');
+      return;
+    }
+
+    console.log('[AnalysisResult] 开始发起分析请求');
+    requestStartedRef.current = true;
+
+    setLoading(true);
+    setError(null);
+    setProgress({ percentage: 0, stage: '准备中', message: '正在初始化...' });
+
+    // 使用流式 API
+    resumeApi.analyzeStream(
+      {
+        content: resumeContent,
+        industryId: selectedIndustry,
+      },
+      {
+        onProgress: (data) => {
+          console.log('[AnalysisResult] 收到进度:', data);
+          setProgress(data);
+        },
+        onComplete: (response) => {
+          console.log('[AnalysisResult] 分析完成:', response);
+          setResult(response);
+          // 缓存分析结果到 store
+          if (currentHash) {
+            setAnalysisResult(response, currentHash);
+          }
+          setLoading(false);
+          setProgress(null);
+        },
+        onError: (err) => {
+          console.error('[AnalysisResult] 分析失败:', err);
+          setError(err.message || '分析失败，请重试');
+          setLoading(false);
+          setProgress(null);
+          requestStartedRef.current = false; // 允许重试
+        },
       }
+    );
 
-      if (initialized.current) return;
-      initialized.current = true;
-
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await resumeApi.analyze({
-          content: resumeContent,
-          industryId: selectedIndustry,
-        });
-        setResult(response);
-      } catch (err: any) {
-        setError(err.response?.data?.message || '分析失败，请重试');
-        console.error('分析失败:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    analyzeResume();
-  }, [resumeContent, selectedIndustry, navigate]);
+    // 不在 cleanup 中取消请求，让请求完成
+  }, [resumeContent, selectedIndustry, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult]);
 
   if (!resumeContent && !loading) {
     navigate('/upload');
@@ -52,15 +103,42 @@ export default function AnalysisResult() {
   if (loading) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
-        <div className="relative w-24 h-24 mb-8">
-          <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <Sparkles className="absolute inset-0 m-auto text-primary animate-pulse" />
+        <div className="relative w-32 h-32 mb-8">
+          {/* 背景圆环 */}
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+            <circle
+              className="text-muted/30 stroke-current"
+              strokeWidth="6"
+              cx="50" cy="50" r="42"
+              fill="transparent"
+            />
+            <motion.circle
+              className="text-primary stroke-current"
+              strokeWidth="6"
+              strokeLinecap="round"
+              cx="50" cy="50" r="42"
+              fill="transparent"
+              strokeDasharray="263.9"
+              initial={{ strokeDashoffset: 263.9 }}
+              animate={{ strokeDashoffset: 263.9 * (1 - (progress?.percentage || 0) / 100) }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          </svg>
+          {/* 中心内容 */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-primary">{progress?.percentage || 0}%</span>
+          </div>
+          {/* 外部光晕动画 */}
+          <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
         </div>
-        <h2 className="text-2xl font-bold mb-2 animate-pulse">AI 正在深度分析您的简历...</h2>
-        <p className="text-muted-foreground text-center max-w-md">
-          正在评估六维能力模型、扫描关键词匹配度、检测 ATS 友好度...
+        <h2 className="text-2xl font-bold mb-2">{progress?.stage || 'AI 分析中'}</h2>
+        <p className="text-muted-foreground text-center max-w-md mb-4">
+          {progress?.message || '正在评估六维能力模型、扫描关键词匹配度、检测 ATS 友好度...'}
         </p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+          <span>AI 深度分析中，请稍候...</span>
+        </div>
       </div>
     );
   }

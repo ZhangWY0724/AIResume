@@ -11,4 +11,9 @@ public interface IResumeAnalyzerService
     /// 分析简历
     /// </summary>
     Task<AnalyzeResponse> AnalyzeAsync(AnalyzeRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 流式分析简历（返回原始 AI 响应内容片段）
+    /// </summary>
+    IAsyncEnumerable<string> AnalyzeStreamAsync(AnalyzeRequest request, CancellationToken cancellationToken = default);
 }

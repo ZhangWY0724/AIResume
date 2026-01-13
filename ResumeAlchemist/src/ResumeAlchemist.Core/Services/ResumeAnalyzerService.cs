@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using ResumeAlchemist.Core.Interfaces;
 using ResumeAlchemist.Shared.Constants;
@@ -49,5 +50,22 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
 
         _logger.LogInformation("简历分析完成，评分: {Score}, 等级: {Level}", result.Score, result.Level);
         return result;
+    }
+
+    public async IAsyncEnumerable<string> AnalyzeStreamAsync(
+        AnalyzeRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("开始流式分析简历，行业: {IndustryId}", request.IndustryId);
+
+        var systemPrompt = AnalyzePrompts.GetSystemPrompt(request.IndustryId);
+        var userMessage = $"请分析以下简历：\n\n{request.Content}";
+
+        await foreach (var chunk in _aiClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken))
+        {
+            yield return chunk;
+        }
+
+        _logger.LogInformation("流式分析完成");
     }
 }

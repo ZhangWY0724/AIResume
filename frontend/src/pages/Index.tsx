@@ -151,7 +151,7 @@ export default function Index() {
 
     const animate = () => {
       const elapsedTime = clock.getElapsedTime();
-      const delta = clock.getDelta(); // Not used but good practice
+      clock.getDelta(); // Keep clock in sync
 
       // Update Uniforms
       material.uniforms.uTime.value = elapsedTime;

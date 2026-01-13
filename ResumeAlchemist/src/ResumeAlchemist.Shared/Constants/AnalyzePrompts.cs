@@ -24,7 +24,9 @@ public static class AnalyzePrompts
 - 60-69 分(C级)：一般，需要较多改进
 - 60 分以下(D级)：需要大幅修改
 
-## 输出 JSON 格式
+{BasePrompts.JsonConstraint}
+
+## 输出 JSON 结构
 {{
   ""score"": 总分(0-100整数),
   ""level"": ""评分等级(S/A/B/C/D)"",
@@ -42,7 +44,7 @@ public static class AnalyzePrompts
   ""missingKeywords"": [""缺失关键词1"", ""缺失关键词2"", ""缺失关键词3""]
 }}
 
-{BasePrompts.JsonConstraint}
+请直接输出 JSON，不要包含任何其他内容。
 ";
     }
 }

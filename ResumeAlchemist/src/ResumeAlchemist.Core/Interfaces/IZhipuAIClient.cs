@@ -13,4 +13,13 @@ public interface IZhipuAIClient
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>AI 响应内容</returns>
     Task<string> ChatAsync(string systemPrompt, string userMessage, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 发送流式聊天请求
+    /// </summary>
+    /// <param name="systemPrompt">系统提示词</param>
+    /// <param name="userMessage">用户消息</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>AI 响应内容片段的异步枚举</returns>
+    IAsyncEnumerable<string> ChatStreamAsync(string systemPrompt, string userMessage, CancellationToken cancellationToken = default);
 }
