@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Download, ArrowLeft, Sparkles, Home, AlertCircle, Copy, Check, ChevronDown, FileText, FileType } from 'lucide-react';
+import { ArrowLeft, Sparkles, Home, AlertCircle, Copy, Check, Eye, Download, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
 import { resumeApi, SseErrorData } from '@/lib/api';
@@ -17,27 +17,17 @@ export default function ResumePolish() {
   const [polishedContent, setPolishedContent] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // 导出相关状态
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
+  // PDF 预览相关状态
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
   // 左侧视图模式
   const [viewMode, setViewMode] = useState<'text' | 'file'>(uploadedFile ? 'file' : 'text');
   const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   const initialized = useRef(false);
-
-  // 点击外部关闭导出菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-        setShowExportMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // 创建文件预览 URL
   useEffect(() => {
@@ -47,6 +37,15 @@ export default function ResumePolish() {
       return () => URL.revokeObjectURL(url);
     }
   }, [uploadedFile]);
+
+  // 清理 PDF blob URL
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+  }, [pdfBlobUrl]);
 
   // 启动润色
   useEffect(() => {
@@ -96,24 +95,9 @@ export default function ResumePolish() {
     }
   };
 
-  // 导出 Markdown
-  const handleExportMd = () => {
-    const blob = new Blob([polishedContent], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '润色简历.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setShowExportMenu(false);
-  };
-
-  // 导出 PDF
-  const handleExportPdf = async () => {
-    setIsExporting(true);
-    setShowExportMenu(false);
+  // 预览 PDF
+  const handlePreviewPdf = async () => {
+    setIsGeneratingPdf(true);
 
     try {
       const blob = await resumeApi.exportPdf({
@@ -122,20 +106,38 @@ export default function ResumePolish() {
         templateId: 'professional',
       });
 
+      // 清理旧的 blob URL
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '润色简历.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setPdfBlob(blob);
+      setPdfBlobUrl(url);
+      setShowPdfPreview(true);
     } catch (e) {
-      console.error('PDF 导出失败', e);
-      alert('PDF 导出失败，请重试');
+      console.error('PDF 生成失败', e);
+      alert('PDF 生成失败，请重试');
     } finally {
-      setIsExporting(false);
+      setIsGeneratingPdf(false);
     }
+  };
+
+  // 下载 PDF
+  const handleDownloadPdf = () => {
+    if (!pdfBlob || !pdfBlobUrl) return;
+
+    const a = document.createElement('a');
+    a.href = pdfBlobUrl;
+    a.download = '润色简历.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // 关闭预览
+  const handleClosePreview = () => {
+    setShowPdfPreview(false);
   };
 
   const originalContent = resumeContent || '';
@@ -179,57 +181,27 @@ export default function ResumePolish() {
                   {copied ? '已复制' : '复制'}
                 </button>
 
-                {/* 导出下拉菜单 */}
-                <div className="relative" ref={exportMenuRef}>
-                  <button
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    disabled={isExporting}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:shadow-lg transition-all",
-                      isExporting && "opacity-70 cursor-wait"
-                    )}
-                  >
-                    {isExporting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        导出中...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4" />
-                        导出
-                        <ChevronDown className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-
-                  {/* 下拉菜单 */}
-                  {showExportMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border overflow-hidden z-30">
-                      <button
-                        onClick={handleExportMd}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors text-left"
-                      >
-                        <FileText className="w-5 h-5 text-blue-500" />
-                        <div>
-                          <div className="font-medium">Markdown 格式</div>
-                          <div className="text-xs text-muted-foreground">适合编辑和复用</div>
-                        </div>
-                      </button>
-                      <div className="border-t" />
-                      <button
-                        onClick={handleExportPdf}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted transition-colors text-left"
-                      >
-                        <FileType className="w-5 h-5 text-red-500" />
-                        <div>
-                          <div className="font-medium">PDF 格式</div>
-                          <div className="text-xs text-muted-foreground">专业简历模板</div>
-                        </div>
-                      </button>
-                    </div>
+                {/* 预览按钮 */}
+                <button
+                  onClick={handlePreviewPdf}
+                  disabled={isGeneratingPdf}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:shadow-lg transition-all",
+                    isGeneratingPdf && "opacity-70 cursor-wait"
                   )}
-                </div>
+                >
+                  {isGeneratingPdf ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4" />
+                      预览
+                    </>
+                  )}
+                </button>
               </>
             )}
           </div>
@@ -355,13 +327,68 @@ export default function ResumePolish() {
               <div className="p-3 border-t bg-green-50 dark:bg-green-950/20 flex items-center gap-2">
                 <Check className="w-4 h-4 text-green-500" />
                 <span className="text-sm text-green-600 dark:text-green-400">
-                  润色完成，可复制或导出结果
+                  润色完成，可复制或预览 PDF
                 </span>
               </div>
             )}
           </div>
         </div>
       </main>
+
+      {/* PDF 预览模态框 */}
+      {showPdfPreview && pdfBlobUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 遮罩层 */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={handleClosePreview}
+          />
+
+          {/* 模态框内容 */}
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-[90vw] h-[90vh] max-w-5xl flex flex-col overflow-hidden">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Eye className="w-5 h-5 text-primary" />
+                PDF 预览
+              </h2>
+              <button
+                onClick={handleClosePreview}
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+                title="关闭"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* PDF 预览区域 */}
+            <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-800">
+              <iframe
+                src={`${pdfBlobUrl}#view=FitH&zoom=page-width`}
+                className="w-full h-full border-none"
+                title="PDF 预览"
+              />
+            </div>
+
+            {/* 底部操作栏 */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-muted/30">
+              <button
+                onClick={handleClosePreview}
+                className="px-5 py-2.5 border rounded-full text-sm font-medium hover:bg-muted transition-all"
+              >
+                关闭
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:shadow-lg transition-all"
+              >
+                <Download className="w-4 h-4" />
+                下载 PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

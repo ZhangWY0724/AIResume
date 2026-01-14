@@ -1,19 +1,15 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
-import { INDUSTRIES } from '@/lib/constants';
-import { useResumeStore } from '@/store/useResumeStore';
-import { cn } from '@/lib/utils';
+import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Index() {
-  const { setSelectedIndustry } = useResumeStore();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleSelectIndustry = (id: string) => {
-    setSelectedIndustry(id);
-    navigate('/upload');
+  const handleStart = () => {
+    navigate('/select-industry');
   };
 
   useEffect(() => {
@@ -43,11 +39,11 @@ export default function Index() {
     for (let i = 0; i < particleCount; i++) {
       // Create a thick shell/volume instead of a thin surface
       // Radius varies from 4.0 to 12.0 to create deep layers
-      const r = 5.0 + Math.random() * 10.0; 
-      
+      const r = 5.0 + Math.random() * 10.0;
+
       const phi = Math.acos(-1 + (2 * i) / particleCount);
       const theta = Math.sqrt(particleCount * Math.PI) * phi;
-      
+
       const x = r * Math.cos(theta) * Math.sin(phi);
       const y = r * Math.sin(theta) * Math.sin(phi);
       const z = r * Math.cos(phi);
@@ -55,10 +51,10 @@ export default function Index() {
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
-      
+
       randoms[i] = Math.random();
       // vary size slightly per particle
-      sizes[i] = 0.5 + Math.random() * 1.0; 
+      sizes[i] = 0.5 + Math.random() * 1.0;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -79,15 +75,15 @@ export default function Index() {
         uniform float uPixelRatio;
         attribute float aRandom;
         attribute float aSize;
-        
+
         varying float vAlpha;
 
         void main() {
           vec3 pos = position;
-          
+
           // Organic floating motion (Noise-like)
           float time = uTime * 0.3;
-          
+
           // Independent movement for each particle
           pos.x += sin(time * 0.5 + aRandom * 10.0) * 0.2;
           pos.y += cos(time * 0.3 + aRandom * 20.0) * 0.2;
@@ -95,16 +91,16 @@ export default function Index() {
 
           vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
           gl_Position = projectionMatrix * mvPosition;
-          
+
           // Size Attenuation: Particles closer to camera are much bigger
           // We clamp minimal size to avoid disappearing
           gl_PointSize = uBaseSize * aSize * uPixelRatio * (1.0 / -mvPosition.z);
-          
+
           // Distance-based opacity (Fade out if too close or too far)
           float dist = length(mvPosition.xyz);
           // Soft fade for very close particles to avoid jarring clipping
-          float alphaFade = smoothstep(0.5, 2.0, dist); 
-          
+          float alphaFade = smoothstep(0.5, 2.0, dist);
+
           vAlpha = (0.6 + 0.4 * sin(uTime + aRandom * 100.0)) * alphaFade;
         }
       `,
@@ -116,12 +112,12 @@ export default function Index() {
           // Soft circular particle with gradient edge
           vec2 coord = gl_PointCoord - vec2(0.5);
           float dist = length(coord);
-          
+
           if(dist > 0.5) discard;
-          
+
           // Soften the edge
           float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
-          
+
           gl_FragColor = vec4(uColor, vAlpha * alpha * 0.8);
         }
       `,
@@ -140,7 +136,7 @@ export default function Index() {
     let mouseY = 0;
     let targetRotationX = 0;
     let targetRotationY = 0;
-    
+
     const handleMouseMove = (event: MouseEvent) => {
       mouseX = (event.clientX / window.innerWidth) * 2 - 1;
       mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -161,11 +157,11 @@ export default function Index() {
       // Smooth camera/particle rotation based on mouse
       targetRotationY = mouseX * 0.1;
       targetRotationX = mouseY * 0.1;
-      
+
       // Lerp rotation for smoothness (Group handles the tilt)
       group.rotation.y += (targetRotationY - group.rotation.y) * 0.05;
       group.rotation.x += (targetRotationX - group.rotation.x) * 0.05;
-      
+
       // Constant slow rotation (Particles handle the spin)
       particles.rotation.y += 0.0005;
 
@@ -199,10 +195,10 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
-      
+
       {/* Three.js Canvas Container */}
       <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-auto" />
-      
+
       {/* Gradient Overlay for Text Readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-white/50 z-0 pointer-events-none" />
 
@@ -210,45 +206,28 @@ export default function Index() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-center mb-12 relative z-10"
+        className="flex flex-col items-center relative z-10"
       >
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 text-slate-900 drop-shadow-sm">
-          AI简历分析
-        </h1>
-        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto font-medium">
-          AI 智能驱动的简历优化专家。选择您的目标领域，让简历脱颖而出。
-        </p>
-      </motion.div>
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 text-slate-900 drop-shadow-sm">
+            智简 · <span className="text-blue-600">SmartCV</span>
+          </h1>
+          <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto font-medium">
+            AI 赋能的简历优化专家，智能分析短板，一键生成专业简历。
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl w-full relative z-10">
-        {INDUSTRIES.map((industry, index) => (
-          <motion.div
-            key={industry.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-            whileHover={{ scale: 1.03, y: -5 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleSelectIndustry(industry.id)}
-            className={cn(
-              "group cursor-pointer rounded-xl border border-slate-200/60 bg-white/60 backdrop-blur-md p-6 shadow-sm transition-all hover:shadow-xl hover:border-blue-400/50 relative overflow-hidden"
-            )}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className={cn("p-3 rounded-lg bg-white/80 group-hover:bg-blue-50 transition-colors shadow-sm ring-1 ring-slate-100", industry.color)}>
-                <industry.icon className="w-8 h-8 text-slate-700 group-hover:text-blue-600 transition-colors" />
-              </div>
-            </div>
-            
-            <h3 className="text-xl font-semibold mb-2 text-slate-800 group-hover:text-blue-600 transition-colors">
-              {industry.name}
-            </h3>
-            <p className="text-slate-500 text-sm font-medium">
-              {industry.description}
-            </p>
-          </motion.div>
-        ))}
-      </div>
+        {/* 开始使用按钮 */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleStart}
+          className="group flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full text-lg font-semibold shadow-lg hover:shadow-xl hover:shadow-blue-500/25 transition-all duration-300"
+        >
+          开始使用
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </motion.button>
+      </motion.div>
 
     </div>
   );
