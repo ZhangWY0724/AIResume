@@ -19,4 +19,9 @@ public class PolishRequest
     /// 目标职位
     /// </summary>
     public string? TargetPosition { get; set; }
+
+    /// <summary>
+    /// AI 模型类型
+    /// </summary>
+    public AIModelType ModelType { get; set; } = AIModelType.Zhipu;
 }

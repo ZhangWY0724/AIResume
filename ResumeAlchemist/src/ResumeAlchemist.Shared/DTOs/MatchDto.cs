@@ -19,6 +19,11 @@ public class MatchRequest
     /// 行业ID
     /// </summary>
     public string IndustryId { get; set; } = "general";
+
+    /// <summary>
+    /// AI 模型类型
+    /// </summary>
+    public AIModelType ModelType { get; set; } = AIModelType.Zhipu;
 }
 
 /// <summary>

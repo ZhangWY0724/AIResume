@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Type, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { FileText, Type, ArrowLeft, ArrowRight, Sparkles, Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
 import FileUploader from '@/components/FileUploader';
 import ResumeInput from '@/components/ResumeInput';
 import { cn } from '@/lib/utils';
 import { INDUSTRIES } from '@/lib/constants';
+import { AIModelType } from '@/lib/api';
 
 type Tab = 'upload' | 'text';
 
+// AI 模型配置
+const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
+  { id: 'zhipu', name: '智谱 AI', description: 'GLM-4 大模型' },
+  { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型' },
+];
+
 export default function ResumeUpload() {
   const [activeTab, setActiveTab] = useState<Tab>('upload');
-  const { selectedIndustry, resumeContent } = useResumeStore();
+  const { selectedIndustry, resumeContent, selectedModel, setSelectedModel } = useResumeStore();
   const navigate = useNavigate();
 
   // Find current industry info
@@ -112,7 +119,32 @@ export default function ResumeUpload() {
 
         {/* Action Bar */}
         <div className="fixed bottom-0 left-0 right-0 p-4 border-t bg-background/80 backdrop-blur-md flex justify-center z-20">
-          <div className="w-full max-w-4xl flex justify-end">
+          <div className="w-full max-w-4xl flex justify-between items-center">
+            {/* AI 模型选择器 */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Bot className="w-4 h-4" />
+                <span>AI 模型：</span>
+              </div>
+              <div className="flex gap-2">
+                {AI_MODELS.map((model) => (
+                  <button
+                    key={model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                      selectedModel === model.id
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                    title={model.description}
+                  >
+                    {model.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={handleNext}
               disabled={!resumeContent.trim()}

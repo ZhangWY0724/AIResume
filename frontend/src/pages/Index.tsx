@@ -250,14 +250,6 @@ export default function Index() {
         ))}
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="mt-16 text-sm text-slate-400 relative z-10"
-      >
-        Powered by AI GLM-4 Model
-      </motion.div>
     </div>
   );
 }

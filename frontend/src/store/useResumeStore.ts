@@ -1,10 +1,14 @@
 import { create } from 'zustand';
-import { AnalyzeResponse, InterviewResponse } from '@/lib/api';
+import { AnalyzeResponse, InterviewResponse, AIModelType } from '@/lib/api';
 
 interface ResumeState {
   // 行业选择
   selectedIndustry: string | null;
   setSelectedIndustry: (industryId: string) => void;
+
+  // AI 模型选择
+  selectedModel: AIModelType;
+  setSelectedModel: (model: AIModelType) => void;
 
   // 简历内容
   resumeContent: string;
@@ -35,6 +39,9 @@ const hashContent = (content: string, industryId: string | null): string => {
 export const useResumeStore = create<ResumeState>((set) => ({
   selectedIndustry: null,
   setSelectedIndustry: (industryId) => set({ selectedIndustry: industryId }),
+
+  selectedModel: 'zhipu',
+  setSelectedModel: (model) => set({ selectedModel: model }),
 
   resumeContent: '',
   setResumeContent: (content) => set({ resumeContent: content }),

@@ -58,6 +58,12 @@ builder.Services.AddHttpClient<IZhipuAIClient, ZhipuAIClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(120);
 });
 
+// 配置 HttpClient for Gemini AI
+builder.Services.AddHttpClient<IGeminiAIClient, GeminiAIClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+
 // 注册业务服务 (Core层)
 builder.Services.AddScoped<IResumeAnalyzerService, ResumeAnalyzerService>();
 builder.Services.AddScoped<IResumePolisherService, ResumePolisherService>();

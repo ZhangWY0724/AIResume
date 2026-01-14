@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 
 export default function ResumePolish() {
   const navigate = useNavigate();
-  const { resumeContent, uploadedFile, selectedIndustry } = useResumeStore();
+  const { resumeContent, uploadedFile, selectedIndustry, selectedModel } = useResumeStore();
 
   // 状态
   const [isPolishing, setIsPolishing] = useState(false);
@@ -66,6 +66,7 @@ export default function ResumePolish() {
       {
         content: resumeContent,
         industryId: selectedIndustry,
+        modelType: selectedModel,
       },
       {
         onContent: (text) => {

@@ -10,23 +10,30 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class JDMatcherService : IJDMatcherService
 {
-    private readonly IZhipuAIClient _aiClient;
+    private readonly IZhipuAIClient _zhipuClient;
+    private readonly IGeminiAIClient _geminiClient;
     private readonly ILogger<JDMatcherService> _logger;
 
-    public JDMatcherService(IZhipuAIClient aiClient, ILogger<JDMatcherService> logger)
+    public JDMatcherService(
+        IZhipuAIClient zhipuClient,
+        IGeminiAIClient geminiClient,
+        ILogger<JDMatcherService> logger)
     {
-        _aiClient = aiClient;
+        _zhipuClient = zhipuClient;
+        _geminiClient = geminiClient;
         _logger = logger;
     }
 
     public async Task<MatchResponse> MatchAsync(MatchRequest request, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("开始职位匹配分析，行业: {IndustryId}", request.IndustryId);
+        _logger.LogInformation("开始职位匹配分析，行业: {IndustryId}, 模型: {ModelType}", request.IndustryId, request.ModelType);
 
         var systemPrompt = MatchPrompts.GetSystemPrompt(request.IndustryId);
         var userMessage = MatchPrompts.GetUserPrompt(request.ResumeContent, request.JobDescription);
 
-        var aiResponse = await _aiClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
+        var aiResponse = request.ModelType == AIModelType.Gemini
+            ? await _geminiClient.ChatAsync(systemPrompt, userMessage, cancellationToken)
+            : await _zhipuClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
 
         var result = JsonHelper.ParseAIResponse<MatchResponse>(aiResponse, _logger);
 

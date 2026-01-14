@@ -11,6 +11,7 @@ export default function AnalysisResult() {
   const {
     resumeContent,
     selectedIndustry,
+    selectedModel,
     analysisResult,
     analysisContentHash,
     setAnalysisResult,
@@ -79,6 +80,7 @@ export default function AnalysisResult() {
       {
         content: resumeContent,
         industryId: selectedIndustry,
+        modelType: selectedModel,
       },
       {
         onProgress: (data) => {
@@ -110,7 +112,7 @@ export default function AnalysisResult() {
     );
 
     // 不在 cleanup 中取消请求，让请求完成
-  }, [resumeContent, selectedIndustry, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult, setInterviewResult]);
+  }, [resumeContent, selectedIndustry, selectedModel, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult, setInterviewResult]);
 
   // 组件卸载时取消面试预测请求
   useEffect(() => {
@@ -136,6 +138,7 @@ export default function AnalysisResult() {
     resumeApi.predictInterview({
       resumeContent,
       industryId: selectedIndustry || 'general',
+      modelType: selectedModel,
     }, abortController.signal)
     .then(res => {
       if (abortController.signal.aborted) return;

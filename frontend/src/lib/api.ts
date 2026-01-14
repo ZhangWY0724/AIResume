@@ -42,6 +42,14 @@ api.interceptors.response.use(
 
 // --- DTO Interfaces ---
 
+// AI 模型类型 (0 = 智谱, 1 = Gemini)
+export type AIModelType = 'zhipu' | 'gemini';
+
+// 将前端模型类型转换为后端枚举值
+export const modelTypeToNumber = (type: AIModelType): number => {
+  return type === 'gemini' ? 1 : 0;
+};
+
 export interface DimensionScore {
   name: string;
   score: number;
@@ -51,6 +59,7 @@ export interface DimensionScore {
 export interface AnalyzeRequest {
   content: string;
   industryId: string;
+  modelType?: AIModelType;
 }
 
 export interface ImprovementItem {
@@ -74,6 +83,7 @@ export interface PolishRequest {
   content: string;
   industryId: string;
   targetPosition?: string;
+  modelType?: AIModelType;
 }
 
 export interface ImportResponse {
@@ -88,6 +98,7 @@ export interface MatchRequest {
   resumeContent: string;
   jobDescription: string;
   industryId?: string;
+  modelType?: AIModelType;
 }
 
 export interface KeywordMatch {
@@ -109,6 +120,7 @@ export interface InterviewRequest {
   resumeContent: string;
   targetPosition?: string;
   industryId?: string;
+  modelType?: AIModelType;
 }
 
 export interface InterviewQuestion {
@@ -236,7 +248,13 @@ export const resumeApi = {
   analyzeStream: (data: AnalyzeRequest, callbacks: AnalyzeStreamCallback): AbortController => {
     const controller = new AbortController();
 
-    console.log('[API] analyzeStream 开始，请求数据:', data);
+    // 转换模型类型为后端枚举值
+    const requestBody = {
+      ...data,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+    };
+
+    console.log('[API] analyzeStream 开始，请求数据:', requestBody);
 
     (async () => {
       try {
@@ -246,7 +264,7 @@ export const resumeApi = {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
@@ -342,12 +360,18 @@ export const resumeApi = {
   polishStream: (data: PolishRequest, callbacks: PolishStreamCallback): AbortController => {
     const controller = new AbortController();
 
+    // 转换模型类型为后端枚举值
+    const requestBody = {
+      ...data,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+    };
+
     (async () => {
       try {
         const response = await fetch('/api/Resume/polish-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         });
 
@@ -415,7 +439,11 @@ export const resumeApi = {
    * 职位匹配 (JD Match)
    */
   matchJob: async (data: MatchRequest): Promise<MatchResponse> => {
-    const response = await api.post<MatchResponse>('/Resume/match', data);
+    const requestBody = {
+      ...data,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+    };
+    const response = await api.post<MatchResponse>('/Resume/match', requestBody);
     return response.data;
   },
 
@@ -425,7 +453,11 @@ export const resumeApi = {
    * @param signal 可选的 AbortSignal，用于取消请求
    */
   predictInterview: async (data: InterviewRequest, signal?: AbortSignal): Promise<InterviewResponse> => {
-    const response = await api.post<InterviewResponse>('/Resume/interview', data, {
+    const requestBody = {
+      ...data,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+    };
+    const response = await api.post<InterviewResponse>('/Resume/interview', requestBody, {
       timeout: 180000, // 面试预测需要更长时间，设置 180s 超时
       signal, // 支持取消请求
     });

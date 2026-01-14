@@ -1,6 +1,22 @@
 namespace ResumeAlchemist.Shared.DTOs;
 
 /// <summary>
+/// AI 模型类型
+/// </summary>
+public enum AIModelType
+{
+    /// <summary>
+    /// 智谱 AI (默认)
+    /// </summary>
+    Zhipu = 0,
+
+    /// <summary>
+    /// Gemini AI
+    /// </summary>
+    Gemini = 1
+}
+
+/// <summary>
 /// 简历分析请求
 /// </summary>
 public class AnalyzeRequest
@@ -14,6 +30,11 @@ public class AnalyzeRequest
     /// 行业ID (tech/finance/marketing/general)
     /// </summary>
     public string IndustryId { get; set; } = "general";
+
+    /// <summary>
+    /// AI 模型类型 (zhipu/gemini)
+    /// </summary>
+    public AIModelType ModelType { get; set; } = AIModelType.Zhipu;
 }
 
 /// <summary>
