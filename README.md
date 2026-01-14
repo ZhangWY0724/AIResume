@@ -84,3 +84,7 @@ AIResume/
 ## License
 
 MIT
+
+## 项目说明
+本项目参考下列项目进行了功能重构和样式重构。
+https://github.com/Anarkh-Lee/resume-alchemist
