@@ -11,17 +11,14 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class ResumePolisherService : IResumePolisherService
 {
-    private readonly IZhipuAIClient _zhipuClient;
-    private readonly IGeminiAIClient _geminiClient;
+    private readonly IAIClientFactory _aiClientFactory;
     private readonly ILogger<ResumePolisherService> _logger;
 
     public ResumePolisherService(
-        IZhipuAIClient zhipuClient,
-        IGeminiAIClient geminiClient,
+        IAIClientFactory aiClientFactory,
         ILogger<ResumePolisherService> logger)
     {
-        _zhipuClient = zhipuClient;
-        _geminiClient = geminiClient;
+        _aiClientFactory = aiClientFactory;
         _logger = logger;
     }
 
@@ -35,11 +32,9 @@ public class ResumePolisherService : IResumePolisherService
         var systemPrompt = PolishPrompts.GetSystemPrompt(request.IndustryId, request.TargetPosition);
         var userMessage = $"请润色以下简历：\n\n{request.Content}";
 
-        var streamSource = request.ModelType == AIModelType.Gemini
-            ? _geminiClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken)
-            : _zhipuClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken);
+        var aiClient = _aiClientFactory.GetClient(request.ModelType);
 
-        await foreach (var chunk in streamSource)
+        await foreach (var chunk in aiClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken))
         {
             yield return chunk;
         }

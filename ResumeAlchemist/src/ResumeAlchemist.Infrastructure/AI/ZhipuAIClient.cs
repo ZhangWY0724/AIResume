@@ -6,33 +6,32 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ResumeAlchemist.Core.Exceptions;
 using ResumeAlchemist.Core.Interfaces;
+using ResumeAlchemist.Shared.Options;
 
 namespace ResumeAlchemist.Infrastructure.AI;
 
 /// <summary>
 /// 智谱 AI 客户端实现
 /// </summary>
-public class ZhipuAIClient : IZhipuAIClient
+public class ZhipuAIClient : IZhipuAIClient, IAIClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<ZhipuAIClient> _logger;
-    private readonly string _apiKey;
-    private readonly string _model;
+    private readonly ZhipuAIOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public ZhipuAIClient(
         HttpClient httpClient,
-        IConfiguration configuration,
+        IOptions<ZhipuAIOptions> options,
         ILogger<ZhipuAIClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _apiKey = configuration["ZhipuAI:ApiKey"] ?? throw new ArgumentNullException("ZhipuAI:ApiKey not configured");
-        _model = configuration["ZhipuAI:Model"] ?? "glm-4";
+        _options = options.Value;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -44,7 +43,7 @@ public class ZhipuAIClient : IZhipuAIClient
     {
         var request = new ZhipuChatRequest
         {
-            Model = _model,
+            Model = _options.Model,
             Messages = new List<ZhipuMessage>
             {
                 new() { Role = "system", Content = systemPrompt },
@@ -54,7 +53,7 @@ public class ZhipuAIClient : IZhipuAIClient
         };
 
         _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_options.ApiKey}");
 
         try
         {
@@ -97,7 +96,7 @@ public class ZhipuAIClient : IZhipuAIClient
     {
         var request = new ZhipuChatRequest
         {
-            Model = _model,
+            Model = _options.Model,
             Stream = true,
             Messages = new List<ZhipuMessage>
             {
@@ -108,7 +107,7 @@ public class ZhipuAIClient : IZhipuAIClient
         };
 
         _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_options.ApiKey}");
 
         var jsonContent = JsonSerializer.Serialize(request, _jsonOptions);
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
@@ -153,7 +152,7 @@ public class ZhipuAIClient : IZhipuAIClient
             if (!line.StartsWith("data:")) continue;
 
             var data = line[5..].Trim();
-            
+
             // 智谱/OpenAI 结束标志
             if (data == "[DONE]") break;
 

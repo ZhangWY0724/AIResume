@@ -15,9 +15,14 @@ export default function Index() {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // --- Cleanup Previous Canvas ---
+    while (containerRef.current.firstChild) {
+      containerRef.current.removeChild(containerRef.current.firstChild);
+    }
+
     // --- Three.js Setup ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
+    scene.background = null; // Use transparent background to show CSS gradients
 
     // Camera setup: Positioned to feel "immersed" but seeing the depth
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -195,6 +200,11 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+
+      {/* --- Ambient Background (Fluid Gradients) --- */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-400/20 rounded-full blur-[100px] animate-fluid pointer-events-none mix-blend-multiply filter" />
+      <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] bg-purple-400/20 rounded-full blur-[100px] animate-fluid-reverse pointer-events-none mix-blend-multiply filter animation-delay-2000" />
+      <div className="absolute bottom-[-20%] left-[20%] w-[45vw] h-[45vw] bg-cyan-400/20 rounded-full blur-[100px] animate-fluid pointer-events-none mix-blend-multiply filter animation-delay-4000" />
 
       {/* Three.js Canvas Container */}
       <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-auto" />

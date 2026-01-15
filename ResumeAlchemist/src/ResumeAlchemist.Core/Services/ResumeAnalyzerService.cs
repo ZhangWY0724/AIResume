@@ -11,17 +11,14 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class ResumeAnalyzerService : IResumeAnalyzerService
 {
-    private readonly IZhipuAIClient _zhipuClient;
-    private readonly IGeminiAIClient _geminiClient;
+    private readonly IAIClientFactory _aiClientFactory;
     private readonly ILogger<ResumeAnalyzerService> _logger;
 
     public ResumeAnalyzerService(
-        IZhipuAIClient zhipuClient,
-        IGeminiAIClient geminiClient,
+        IAIClientFactory aiClientFactory,
         ILogger<ResumeAnalyzerService> logger)
     {
-        _zhipuClient = zhipuClient;
-        _geminiClient = geminiClient;
+        _aiClientFactory = aiClientFactory;
         _logger = logger;
     }
 
@@ -32,9 +29,8 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
         var systemPrompt = AnalyzePrompts.GetSystemPrompt(request.IndustryId);
         var userMessage = $"请分析以下简历：\n\n{request.Content}";
 
-        var aiResponse = request.ModelType == AIModelType.Gemini
-            ? await _geminiClient.ChatAsync(systemPrompt, userMessage, cancellationToken)
-            : await _zhipuClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
+        var aiClient = _aiClientFactory.GetClient(request.ModelType);
+        var aiResponse = await aiClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
 
         var result = JsonHelper.ParseAIResponse<AnalyzeResponse>(aiResponse, _logger);
 
@@ -76,11 +72,9 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
         var systemPrompt = AnalyzePrompts.GetSystemPrompt(request.IndustryId);
         var userMessage = $"请分析以下简历：\n\n{request.Content}";
 
-        var streamSource = request.ModelType == AIModelType.Gemini
-            ? _geminiClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken)
-            : _zhipuClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken);
+        var aiClient = _aiClientFactory.GetClient(request.ModelType);
 
-        await foreach (var chunk in streamSource)
+        await foreach (var chunk in aiClient.ChatStreamAsync(systemPrompt, userMessage, cancellationToken))
         {
             yield return chunk;
         }

@@ -5,20 +5,25 @@ import SelectIndustry from '@/pages/SelectIndustry';
 import ResumeUpload from '@/pages/ResumeUpload';
 import AnalysisResult from '@/pages/AnalysisResult';
 import ResumePolish from '@/pages/ResumePolish';
+import { ToastContainer } from '@/components/Toast';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          <Route path="/select-industry" element={<SelectIndustry />} />
-          <Route path="/upload" element={<ResumeUpload />} />
-          <Route path="/result" element={<AnalysisResult />} />
-          <Route path="/polish" element={<ResumePolish />} />
-        </Route>
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/select-industry" element={<SelectIndustry />} />
+            <Route path="/upload" element={<ResumeUpload />} />
+            <Route path="/result" element={<AnalysisResult />} />
+            <Route path="/polish" element={<ResumePolish />} />
+          </Route>
+        </Routes>
+        <ToastContainer />
+      </Router>
+    </ErrorBoundary>
   );
 }
 

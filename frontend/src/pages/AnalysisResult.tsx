@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, HelpCircle, MessageSquare, Target, Lightbulb, ChevronDown, ChevronUp, Clock, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, HelpCircle, MessageSquare, Target, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore, hashContent } from '@/store/useResumeStore';
 import { resumeApi, AnalyzeResponse, SseProgressData, SseErrorData, RateLimitError } from '@/lib/api';
 import RadarChart from '@/components/RadarChart';
 import { cn } from '@/lib/utils';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 
 export default function AnalysisResult() {
   const {
@@ -21,7 +22,7 @@ export default function AnalysisResult() {
 
   // 计算当前内容的哈希值，判断是否有有效缓存
   const currentHash = resumeContent && selectedIndustry
-    ? hashContent(resumeContent, selectedIndustry)
+    ? hashContent(resumeContent, selectedIndustry, selectedModel)
     : null;
   const hasCachedResult = analysisResult && analysisContentHash === currentHash;
 
@@ -32,7 +33,7 @@ export default function AnalysisResult() {
 
   // Interview prediction state
   const [loadingInterview, setLoadingInterview] = useState(false);
-  const [interviewError, setInterviewError] = useState<{ message: string; isRateLimit?: boolean; isTimeout?: boolean } | null>(null);
+  const [interviewError, setInterviewError] = useState<SseErrorData | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const [expandedImprovement, setExpandedImprovement] = useState<number | null>(null);
 
@@ -148,11 +149,21 @@ export default function AnalysisResult() {
       if (err.name === 'CanceledError' || abortController.signal.aborted) return;
 
       if (err instanceof RateLimitError) {
-        setInterviewError({ message: err.message, isRateLimit: true });
+        setInterviewError({
+          message: err.message,
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfterSeconds: err.retryAfterSeconds,
+        });
       } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-        setInterviewError({ message: 'AI 生成面试问题需要较长时间，请稍后重试', isTimeout: true });
+        setInterviewError({
+          message: 'AI 生成面试问题需要较长时间，请稍后重试',
+          code: 'TIMEOUT_ERROR',
+        });
       } else {
-        setInterviewError({ message: err.message || '面试预测失败，请重试' });
+        setInterviewError({
+          message: err.message || '面试预测失败，请重试',
+          code: 'UNKNOWN_ERROR',
+        });
       }
     })
     .finally(() => {
@@ -211,45 +222,18 @@ export default function AnalysisResult() {
   }
 
   if (error) {
-    const isRateLimitError = error.code === 'RATE_LIMIT_EXCEEDED';
-
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
-        {isRateLimitError ? (
-          <>
-            <div className="w-20 h-20 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-6">
-              <Clock className="w-10 h-10 text-orange-500" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-orange-600 dark:text-orange-400">请求过于频繁</h2>
-            <p className="text-muted-foreground mb-2 text-center max-w-md">{error.message}</p>
-            {error.retryAfterSeconds && (
-              <p className="text-sm text-muted-foreground mb-6">
-                建议等待 <span className="font-bold text-orange-500">{error.retryAfterSeconds}</span> 秒后重试
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <AlertCircle className="w-16 h-16 text-destructive mb-4" />
-            <h2 className="text-2xl font-bold mb-2">分析失败</h2>
-            <p className="text-muted-foreground mb-6">{error.message}</p>
-          </>
-        )}
-        <button
-          onClick={() => {
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <ErrorDisplay
+          error={error}
+          size="lg"
+          onRetry={() => {
             setError(null);
             requestStartedRef.current = false;
             navigate('/upload');
           }}
-          className={cn(
-            "px-6 py-2 rounded-full text-white hover:shadow-lg transition-all",
-            isRateLimitError
-              ? "bg-orange-500 hover:bg-orange-600"
-              : "bg-primary text-primary-foreground"
-          )}
-        >
-          返回重试
-        </button>
+          retryText="返回重试"
+        />
       </div>
     );
   }
@@ -528,46 +512,13 @@ export default function AnalysisResult() {
                   <p className="text-muted-foreground text-sm">正在根据您的简历生成面试问题</p>
               </div>
           ) : interviewError ? (
-              <div className="flex flex-col items-center justify-center py-12 bg-secondary/20 rounded-xl">
-                  <div className={cn(
-                    "w-16 h-16 rounded-full flex items-center justify-center mb-4",
-                    interviewError.isRateLimit ? "bg-orange-100 dark:bg-orange-900/30" :
-                    interviewError.isTimeout ? "bg-blue-100 dark:bg-blue-900/30" :
-                    "bg-red-100 dark:bg-red-900/30"
-                  )}>
-                    {interviewError.isRateLimit ? (
-                      <Clock className="w-8 h-8 text-orange-500" />
-                    ) : interviewError.isTimeout ? (
-                      <Clock className="w-8 h-8 text-blue-500" />
-                    ) : (
-                      <AlertCircle className="w-8 h-8 text-red-500" />
-                    )}
-                  </div>
-                  <h4 className={cn(
-                    "text-lg font-bold mb-2",
-                    interviewError.isRateLimit ? "text-orange-600 dark:text-orange-400" :
-                    interviewError.isTimeout ? "text-blue-600 dark:text-blue-400" :
-                    "text-red-600 dark:text-red-400"
-                  )}>
-                    {interviewError.isRateLimit ? "请求过于频繁" :
-                     interviewError.isTimeout ? "生成超时" :
-                     "生成失败"}
-                  </h4>
-                  <p className="text-muted-foreground text-sm mb-4 text-center max-w-md">
-                    {interviewError.message}
-                  </p>
-                  <button
-                    onClick={handleGenerateInterview}
-                    className={cn(
-                      "flex items-center gap-2 px-5 py-2.5 rounded-full text-white font-medium hover:shadow-lg transition-all",
-                      interviewError.isRateLimit ? "bg-orange-500 hover:bg-orange-600" :
-                      interviewError.isTimeout ? "bg-blue-500 hover:bg-blue-600" :
-                      "bg-primary"
-                    )}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    重新生成
-                  </button>
+              <div className="py-8">
+                <ErrorDisplay
+                  error={interviewError}
+                  size="sm"
+                  onRetry={handleGenerateInterview}
+                  retryText="重新生成"
+                />
               </div>
           ) : interviewResult ? (
               <motion.div

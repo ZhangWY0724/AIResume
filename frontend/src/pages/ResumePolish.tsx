@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sparkles, Home, AlertCircle, Copy, Check, Eye, Download, X } from 'lucide-react';
+import { ArrowLeft, Sparkles, Home, Copy, Check, Eye, Download, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
 import { resumeApi, SseErrorData } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
 
 export default function ResumePolish() {
   const navigate = useNavigate();
@@ -285,20 +286,13 @@ export default function ResumePolish() {
 
             <div className="flex-1 overflow-hidden">
               {error ? (
-                <div className="flex flex-col items-center justify-center h-full p-6">
-                  <AlertCircle className="w-16 h-16 text-destructive mb-4" />
-                  <p className="text-destructive mb-2 font-medium">{error.message}</p>
-                  {error.retryAfterSeconds && (
-                    <p className="text-sm text-muted-foreground mb-4">
-                      建议等待 {error.retryAfterSeconds} 秒后重试
-                    </p>
-                  )}
-                  <button
-                    onClick={() => navigate('/result')}
-                    className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg transition-all"
-                  >
-                    返回分析报告
-                  </button>
+                <div className="flex items-center justify-center h-full">
+                  <ErrorDisplay
+                    error={error}
+                    size="md"
+                    onRetry={() => navigate('/result')}
+                    retryText="返回分析报告"
+                  />
                 </div>
               ) : (
                 <div className="h-full overflow-y-auto p-6">

@@ -32,8 +32,8 @@ interface ResumeState {
 }
 
 // 简单的内容哈希函数，用于判断简历内容是否变化
-const hashContent = (content: string, industryId: string | null): string => {
-  return `${industryId}:${content.length}:${content.substring(0, 100)}`;
+const hashContent = (content: string, industryId: string | null, modelType: string): string => {
+  return `${industryId}:${modelType}:${content.length}:${content.substring(0, 100)}`;
 };
 
 export const useResumeStore = create<ResumeState>((set) => ({

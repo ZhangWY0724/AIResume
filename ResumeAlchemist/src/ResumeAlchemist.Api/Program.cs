@@ -1,14 +1,15 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using ResumeAlchemist.Api.Middleware;
-using ResumeAlchemist.Core.Interfaces;
-using ResumeAlchemist.Core.Services;
-using ResumeAlchemist.Infrastructure.AI;
-using ResumeAlchemist.Infrastructure.Services;
+using ResumeAlchemist.Core;
+using ResumeAlchemist.Infrastructure;
+using ResumeAlchemist.Shared.Options;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +19,6 @@ Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -51,28 +51,64 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 配置 HttpClient for AI
-builder.Services.AddHttpClient<IZhipuAIClient, ZhipuAIClient>(client =>
+// 配置 Rate Limiting（限流保护）
+var rateLimitOptions = builder.Configuration.GetSection(RateLimitOptions.SectionName).Get<RateLimitOptions>() ?? new RateLimitOptions();
+
+builder.Services.AddRateLimiter(options =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["ZhipuAI:BaseUrl"] ?? "https://open.bigmodel.cn/api/paas/v4/");
-    client.Timeout = TimeSpan.FromSeconds(120);
+    // 全局限流策略：固定窗口算法
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimitOptions.PermitLimit,
+                Window = TimeSpan.FromSeconds(rateLimitOptions.WindowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = rateLimitOptions.QueueLimit
+            }));
+
+    // AI 接口专用限流策略：更严格的限制
+    options.AddFixedWindowLimiter("ai", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = rateLimitOptions.AIPermitLimit;
+        limiterOptions.Window = TimeSpan.FromSeconds(60);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0; // 不排队，直接拒绝
+    });
+
+    // 限流被拒绝时的响应
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+
+        var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfterValue)
+            ? retryAfterValue.TotalSeconds
+            : 60;
+
+        context.HttpContext.Response.Headers.RetryAfter = retryAfter.ToString();
+
+        var response = new
+        {
+            error = "请求过于频繁，请稍后重试",
+            retryAfterSeconds = (int)retryAfter
+        };
+
+        await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+    };
 });
 
-// 配置 HttpClient for Gemini AI
-builder.Services.AddHttpClient<IGeminiAIClient, GeminiAIClient>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(120);
-});
+// 注册 RateLimitOptions
+builder.Services.AddOptions<RateLimitOptions>()
+    .Bind(builder.Configuration.GetSection(RateLimitOptions.SectionName))
+    .ValidateDataAnnotations();
 
-// 注册业务服务 (Core层)
-builder.Services.AddScoped<IResumeAnalyzerService, ResumeAnalyzerService>();
-builder.Services.AddScoped<IResumePolisherService, ResumePolisherService>();
-builder.Services.AddScoped<IJDMatcherService, JDMatcherService>();
-builder.Services.AddScoped<IInterviewPredictorService, InterviewPredictorService>();
-builder.Services.AddSingleton<IPdfExportService, PdfExportService>();
+// 注册 Infrastructure 层服务 (AI 客户端、解析服务等)
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// 注册基础设施服务 (Infrastructure层)
-builder.Services.AddScoped<IResumeParserService, ResumeParserService>();
+// 注册 Core 层业务服务
+builder.Services.AddCoreServices();
 
 // 配置 FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
@@ -93,6 +129,9 @@ app.UseExceptionHandling();
 app.UseSerilogRequestLogging();
 
 app.UseCors("AllowFrontend");
+
+// 启用限流中间件
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 

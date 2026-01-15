@@ -10,17 +10,14 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class InterviewPredictorService : IInterviewPredictorService
 {
-    private readonly IZhipuAIClient _zhipuClient;
-    private readonly IGeminiAIClient _geminiClient;
+    private readonly IAIClientFactory _aiClientFactory;
     private readonly ILogger<InterviewPredictorService> _logger;
 
     public InterviewPredictorService(
-        IZhipuAIClient zhipuClient,
-        IGeminiAIClient geminiClient,
+        IAIClientFactory aiClientFactory,
         ILogger<InterviewPredictorService> logger)
     {
-        _zhipuClient = zhipuClient;
-        _geminiClient = geminiClient;
+        _aiClientFactory = aiClientFactory;
         _logger = logger;
     }
 
@@ -32,9 +29,8 @@ public class InterviewPredictorService : IInterviewPredictorService
         var systemPrompt = InterviewPrompts.GetSystemPrompt(request.IndustryId, request.TargetPosition);
         var userMessage = $"请基于以下简历预测面试问题：\n\n{request.ResumeContent}";
 
-        var aiResponse = request.ModelType == AIModelType.Gemini
-            ? await _geminiClient.ChatAsync(systemPrompt, userMessage, cancellationToken)
-            : await _zhipuClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
+        var aiClient = _aiClientFactory.GetClient(request.ModelType);
+        var aiResponse = await aiClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
 
         var result = JsonHelper.ParseAIResponse<InterviewResponse>(aiResponse, _logger);
 

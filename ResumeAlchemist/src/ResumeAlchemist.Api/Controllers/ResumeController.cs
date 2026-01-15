@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ResumeAlchemist.Core.Exceptions;
 using ResumeAlchemist.Core.Interfaces;
 using ResumeAlchemist.Core.Services;
@@ -51,6 +52,7 @@ public class ResumeController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>分析结果</returns>
     [HttpPost("analyze")]
+    [EnableRateLimiting("ai")]
     [ProducesResponseType(typeof(AnalyzeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AnalyzeResponse>> Analyze(
@@ -73,6 +75,7 @@ public class ResumeController : ControllerBase
     /// <param name="request">分析请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     [HttpPost("analyze-stream")]
+    [EnableRateLimiting("ai")]
     public async Task AnalyzeStream(
         [FromBody] AnalyzeRequest request,
         CancellationToken cancellationToken)
@@ -215,6 +218,7 @@ public class ResumeController : ControllerBase
     /// <param name="request">润色请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     [HttpPost("polish-stream")]
+    [EnableRateLimiting("ai")]
     public async Task PolishStream(
         [FromBody] PolishRequest request,
         CancellationToken cancellationToken)
@@ -266,6 +270,7 @@ public class ResumeController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>匹配结果</returns>
     [HttpPost("match")]
+    [EnableRateLimiting("ai")]
     [ProducesResponseType(typeof(MatchResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<MatchResponse>> Match(
@@ -329,6 +334,7 @@ public class ResumeController : ControllerBase
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>预测结果</returns>
     [HttpPost("interview")]
+    [EnableRateLimiting("ai")]
     [ProducesResponseType(typeof(InterviewResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<InterviewResponse>> Interview(

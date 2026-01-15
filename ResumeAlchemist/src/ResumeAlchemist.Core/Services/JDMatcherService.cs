@@ -10,17 +10,14 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class JDMatcherService : IJDMatcherService
 {
-    private readonly IZhipuAIClient _zhipuClient;
-    private readonly IGeminiAIClient _geminiClient;
+    private readonly IAIClientFactory _aiClientFactory;
     private readonly ILogger<JDMatcherService> _logger;
 
     public JDMatcherService(
-        IZhipuAIClient zhipuClient,
-        IGeminiAIClient geminiClient,
+        IAIClientFactory aiClientFactory,
         ILogger<JDMatcherService> logger)
     {
-        _zhipuClient = zhipuClient;
-        _geminiClient = geminiClient;
+        _aiClientFactory = aiClientFactory;
         _logger = logger;
     }
 
@@ -31,9 +28,8 @@ public class JDMatcherService : IJDMatcherService
         var systemPrompt = MatchPrompts.GetSystemPrompt(request.IndustryId);
         var userMessage = MatchPrompts.GetUserPrompt(request.ResumeContent, request.JobDescription);
 
-        var aiResponse = request.ModelType == AIModelType.Gemini
-            ? await _geminiClient.ChatAsync(systemPrompt, userMessage, cancellationToken)
-            : await _zhipuClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
+        var aiClient = _aiClientFactory.GetClient(request.ModelType);
+        var aiResponse = await aiClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
 
         var result = JsonHelper.ParseAIResponse<MatchResponse>(aiResponse, _logger);
 

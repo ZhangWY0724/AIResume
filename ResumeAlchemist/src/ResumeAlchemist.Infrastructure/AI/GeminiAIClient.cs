@@ -6,35 +6,32 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ResumeAlchemist.Core.Exceptions;
 using ResumeAlchemist.Core.Interfaces;
+using ResumeAlchemist.Shared.Options;
 
 namespace ResumeAlchemist.Infrastructure.AI;
 
 /// <summary>
 /// Gemini AI 客户端实现
 /// </summary>
-public class GeminiAIClient : IGeminiAIClient
+public class GeminiAIClient : IGeminiAIClient, IAIClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GeminiAIClient> _logger;
-    private readonly string _apiKey;
-    private readonly string _model;
-    private readonly string _baseUrl;
+    private readonly GeminiAIOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
 
     public GeminiAIClient(
         HttpClient httpClient,
-        IConfiguration configuration,
+        IOptions<GeminiAIOptions> options,
         ILogger<GeminiAIClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _apiKey = configuration["GeminiAI:ApiKey"] ?? throw new ArgumentNullException("GeminiAI:ApiKey not configured");
-        _model = configuration["GeminiAI:Model"] ?? "claude-haiku-4-5-20251001";
-        _baseUrl = configuration["GeminiAI:BaseUrl"] ?? "http://47.83.126.41:8317";
+        _options = options.Value;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -59,10 +56,10 @@ public class GeminiAIClient : IGeminiAIClient
             }
         };
 
-        var url = $"{_baseUrl}/v1beta/models/{_model}:generateContent";
+        var url = $"{_options.BaseUrl}/v1beta/models/{_options.Model}:generateContent";
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Headers.Add("x-goog-api-key", _apiKey);
+        httpRequest.Headers.Add("x-goog-api-key", _options.ApiKey);
         httpRequest.Content = new StringContent(
             JsonSerializer.Serialize(request, _jsonOptions),
             Encoding.UTF8,
@@ -120,10 +117,10 @@ public class GeminiAIClient : IGeminiAIClient
             }
         };
 
-        var url = $"{_baseUrl}/v1beta/models/{_model}:streamGenerateContent";
+        var url = $"{_options.BaseUrl}/v1beta/models/{_options.Model}:streamGenerateContent";
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        httpRequest.Headers.Add("x-goog-api-key", _apiKey);
+        httpRequest.Headers.Add("x-goog-api-key", _options.ApiKey);
         httpRequest.Content = new StringContent(
             JsonSerializer.Serialize(request, _jsonOptions),
             Encoding.UTF8,
