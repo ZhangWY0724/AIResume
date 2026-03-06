@@ -246,7 +246,13 @@ export const resumeApi = {
    * 简历智能分析
    */
   analyze: async (data: AnalyzeRequest): Promise<AnalyzeResponse> => {
-    const response = await api.post<AnalyzeResponse>('/Resume/analyze', data);
+    const requestBody = {
+      ...data,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+    };
+    const response = await api.post<AnalyzeResponse>('/Resume/analyze', requestBody, {
+      timeout: 180000, // 分析等待完整结果返回，超时放宽到 180s
+    });
     return response.data;
   },
 

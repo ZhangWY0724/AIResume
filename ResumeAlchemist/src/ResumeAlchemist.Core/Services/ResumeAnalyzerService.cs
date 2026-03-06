@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ResumeAlchemist.Core.Interfaces;
 using ResumeAlchemist.Shared.Constants;
@@ -32,7 +33,7 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
         var aiClient = _aiClientFactory.GetClient(request.ModelType);
         var aiResponse = await aiClient.ChatAsync(systemPrompt, userMessage, cancellationToken);
 
-        var result = JsonHelper.ParseAIResponse<AnalyzeResponse>(aiResponse, _logger);
+        var result = TryParseFromAllJsonObjects(aiResponse) ?? JsonHelper.ParseAIResponse<AnalyzeResponse>(aiResponse, _logger);
 
         if (result == null)
         {
@@ -80,5 +81,100 @@ public class ResumeAnalyzerService : IResumeAnalyzerService
         }
 
         _logger.LogInformation("流式分析完成");
+    }
+
+    /// <summary>
+    /// 从文本中提取所有完整 JSON 对象（支持字符串、转义、嵌套括号）
+    /// </summary>
+    private static IEnumerable<string> ExtractCompleteJsonObjects(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            yield break;
+        }
+
+        var start = -1;
+        var depth = 0;
+        var inString = false;
+        var escape = false;
+
+        for (var i = 0; i < content.Length; i++)
+        {
+            var c = content[i];
+
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\' && inString)
+            {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString)
+            {
+                continue;
+            }
+
+            if (c == '{')
+            {
+                if (depth == 0)
+                {
+                    start = i;
+                }
+                depth++;
+                continue;
+            }
+
+            if (c == '}')
+            {
+                if (depth == 0)
+                {
+                    continue;
+                }
+
+                depth--;
+                if (depth == 0 && start >= 0)
+                {
+                    yield return content[start..(i + 1)];
+                    start = -1;
+                }
+            }
+        }
+    }
+
+    private static AnalyzeResponse? TryParseFromAllJsonObjects(string content)
+    {
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        foreach (var json in ExtractCompleteJsonObjects(content))
+        {
+            try
+            {
+                var candidate = JsonSerializer.Deserialize<AnalyzeResponse>(json, options);
+                if (candidate != null)
+                {
+                    return candidate;
+                }
+            }
+            catch (JsonException)
+            {
+                // 忽略无效候选，继续尝试后续完整对象
+            }
+        }
+
+        return null;
     }
 }

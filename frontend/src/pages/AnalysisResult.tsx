@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle, AlertCircle, Sparkles, ChevronRight, HelpCircle, MessageSquare, Target, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore, hashContent } from '@/store/useResumeStore';
-import { resumeApi, AnalyzeResponse, SseProgressData, SseErrorData, RateLimitError } from '@/lib/api';
+import { resumeApi, AnalyzeResponse, SseErrorData, RateLimitError } from '@/lib/api';
 import RadarChart from '@/components/RadarChart';
 import { cn } from '@/lib/utils';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
@@ -29,7 +29,6 @@ export default function AnalysisResult() {
   const [loading, setLoading] = useState(!hasCachedResult);
   const [error, setError] = useState<SseErrorData | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(hasCachedResult ? analysisResult : null);
-  const [progress, setProgress] = useState<SseProgressData | null>(null);
 
   // Interview prediction state
   const [loadingInterview, setLoadingInterview] = useState(false);
@@ -74,43 +73,37 @@ export default function AnalysisResult() {
 
     setLoading(true);
     setError(null);
-    setProgress({ percentage: 0, stage: '准备中', message: '正在初始化...' });
 
-    // 使用流式 API
-    resumeApi.analyzeStream(
-      {
-        content: resumeContent,
-        industryId: selectedIndustry,
-        modelType: selectedModel,
-      },
-      {
-        onProgress: (data) => {
-          console.log('[AnalysisResult] 收到进度:', data);
-          setProgress(data);
-        },
-        onComplete: (response) => {
-          console.log('[AnalysisResult] 分析完成:', response);
-          // 先显示 100% 完成状态，延迟 0.5 秒后再跳转到结果
-          setProgress({ percentage: 100, stage: '完成', message: '分析完成！' });
-          setTimeout(() => {
-            setResult(response);
-            // 缓存分析结果到 store
-            if (currentHash) {
-              setAnalysisResult(response, currentHash);
-            }
-            setLoading(false);
-            setProgress(null);
-          }, 500);
-        },
-        onError: (err) => {
-          console.error('[AnalysisResult] 分析失败:', err);
-          setError(err);
-          setLoading(false);
-          setProgress(null);
-          requestStartedRef.current = false; // 允许重试
-        },
-      }
-    );
+    resumeApi.analyze({
+      content: resumeContent,
+      industryId: selectedIndustry,
+      modelType: selectedModel,
+    })
+      .then((response) => {
+        console.log('[AnalysisResult] 分析完成:', response);
+        setResult(response);
+        if (currentHash) {
+          setAnalysisResult(response, currentHash);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('[AnalysisResult] 分析失败:', err);
+        if (err instanceof RateLimitError) {
+          setError({
+            message: err.message,
+            code: 'RATE_LIMIT_EXCEEDED',
+            retryAfterSeconds: err.retryAfterSeconds,
+          });
+        } else {
+          setError({
+            message: err?.response?.data?.message || err?.message || '分析失败，请重试',
+            code: 'HTTP_ERROR',
+          });
+        }
+        setLoading(false);
+        requestStartedRef.current = false; // 允许重试
+      });
 
     // 不在 cleanup 中取消请求，让请求完成
   }, [resumeContent, selectedIndustry, selectedModel, navigate, result, hasCachedResult, analysisResult, currentHash, setAnalysisResult, setInterviewResult]);
@@ -182,36 +175,14 @@ export default function AnalysisResult() {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
         <div className="relative w-32 h-32 mb-8">
-          {/* 背景圆环 */}
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle
-              className="text-muted/30 stroke-current"
-              strokeWidth="6"
-              cx="50" cy="50" r="42"
-              fill="transparent"
-            />
-            <motion.circle
-              className="text-primary stroke-current"
-              strokeWidth="6"
-              strokeLinecap="round"
-              cx="50" cy="50" r="42"
-              fill="transparent"
-              strokeDasharray="263.9"
-              initial={{ strokeDashoffset: 263.9 }}
-              animate={{ strokeDashoffset: 263.9 * (1 - (progress?.percentage || 0) / 100) }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            />
-          </svg>
-          {/* 中心内容 */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-primary">{progress?.percentage || 0}%</span>
-          </div>
+          <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
           {/* 外部光晕动画 */}
           <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">{progress?.stage || 'AI 分析中'}</h2>
+        <h2 className="text-2xl font-bold mb-2">AI 分析中</h2>
         <p className="text-muted-foreground text-center max-w-md mb-4">
-          {progress?.message || '正在评估六维能力模型、扫描关键词匹配度、检测 ATS 友好度...'}
+          正在评估六维能力模型、扫描关键词匹配度、检测 ATS 友好度...
         </p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Sparkles className="w-4 h-4 text-primary animate-pulse" />
