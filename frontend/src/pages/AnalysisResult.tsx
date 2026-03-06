@@ -171,22 +171,73 @@ export default function AnalysisResult() {
     return null;
   }
 
+  const loadingStages = [
+    '解析简历结构',
+    '评估六维能力',
+    '生成优化建议'
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center p-8">
-        <div className="relative w-32 h-32 mb-8">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-          {/* 外部光晕动画 */}
-          <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
-        </div>
-        <h2 className="text-2xl font-bold mb-2">AI 分析中</h2>
-        <p className="text-muted-foreground text-center max-w-md mb-4">
-          正在评估六维能力模型、扫描关键词匹配度、检测 ATS 友好度...
-        </p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-          <span>AI 深度分析中，请稍候...</span>
+      <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-8">
+        <div className="w-full max-w-5xl space-y-5">
+          <div className="rounded-3xl border bg-card p-6 md:p-8 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="relative h-10 w-10 rounded-full border border-primary/20 bg-primary/5 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold">AI 正在分析您的简历</h2>
+            </div>
+            <p className="text-muted-foreground">
+              已进入深度诊断阶段，将为您输出评分、亮点、改进建议与关键词优化方向。
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
+              {loadingStages.map((stage, index) => (
+                <div
+                  key={stage}
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm flex items-center gap-2",
+                    index === 0 ? "border-primary/30 bg-primary/5" : "bg-muted/30"
+                  )}
+                >
+                  <span className={cn(
+                    "w-2 h-2 rounded-full",
+                    index === 0 ? "bg-primary animate-pulse" : "bg-muted-foreground/40"
+                  )} />
+                  <span className={index === 0 ? "text-foreground font-medium" : "text-muted-foreground"}>
+                    {stage}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-1 rounded-3xl border bg-card p-5 animate-pulse">
+              <div className="h-4 w-20 bg-muted rounded mb-4" />
+              <div className="h-28 w-28 mx-auto bg-muted rounded-full" />
+              <div className="h-3 w-24 mx-auto bg-muted rounded mt-4" />
+            </div>
+            <div className="md:col-span-1 rounded-3xl border bg-card p-5 animate-pulse">
+              <div className="h-4 w-20 bg-muted rounded mb-4" />
+              <div className="h-36 bg-muted rounded-2xl" />
+            </div>
+            <div className="md:col-span-2 rounded-3xl border bg-card p-5 animate-pulse">
+              <div className="h-5 w-32 bg-muted rounded mb-5" />
+              <div className="space-y-3">
+                <div className="h-4 w-full bg-muted rounded" />
+                <div className="h-4 w-11/12 bg-muted rounded" />
+                <div className="h-4 w-4/5 bg-muted rounded" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+            <span>预计还需几秒，请稍候...</span>
+          </div>
         </div>
       </div>
     );
@@ -230,10 +281,8 @@ export default function AnalysisResult() {
                 重新上传
               </button>
               <button
-                disabled
                 onClick={() => navigate('/polish')}
-                className="px-6 py-2 rounded-full bg-muted text-muted-foreground cursor-not-allowed transition-all text-sm font-medium flex items-center gap-2"
-                title="暂未开放"
+                className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-all text-sm font-medium flex items-center gap-2"
               >
                 一键 AI 润色
                 <ChevronRight className="w-4 h-4" />
@@ -392,10 +441,8 @@ export default function AnalysisResult() {
 
                                           <div className="flex justify-end">
                                               <button
-                                                  disabled
                                                   onClick={() => navigate('/polish')}
-                                                  className="text-xs font-medium text-muted-foreground opacity-50 cursor-not-allowed flex items-center gap-1"
-                                                  title="暂未开放"
+                                                  className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1"
                                               >
                                                   去润色页面应用修改 <ChevronRight className="w-3 h-3" />
                                               </button>

@@ -271,17 +271,24 @@ export default function ResumePolish() {
             "flex flex-col h-full overflow-hidden border rounded-xl shadow-sm transition-all",
             isPolishing ? "border-primary ring-1 ring-primary/20" : "border-border"
           )}>
-            <div className="p-3 border-b bg-primary/5 flex items-center gap-2">
+            <div className="p-3 border-b bg-primary/5 flex items-start gap-2">
               <div className={cn(
-                "w-2 h-2 rounded-full",
+                "w-2 h-2 rounded-full mt-1.5",
                 isCompleted ? "bg-green-500" : isPolishing ? "bg-primary animate-pulse" : "bg-muted"
               )} />
-              <span className={cn(
-                "font-medium text-sm",
-                isCompleted ? "text-green-600" : isPolishing ? "text-primary" : "text-muted-foreground"
-              )}>
-                {isCompleted ? "润色完成" : isPolishing ? "AI 正在润色..." : "准备就绪"}
-              </span>
+              <div className="space-y-1">
+                <span className={cn(
+                  "font-medium text-sm",
+                  isCompleted ? "text-green-600" : isPolishing ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {isCompleted ? "润色完成" : isPolishing ? "AI 正在润色..." : "准备就绪"}
+                </span>
+                {isPolishing && (
+                  <p className="text-xs text-muted-foreground">
+                    免责声明：AI 润色结果受模型能力影响，仅供参考，请结合实际经历自行校对。
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
