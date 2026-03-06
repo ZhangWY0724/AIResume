@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>服务维护中 | IO724</title>
+    <style>
+      :root {
+        --text: #0f172a;
+        --muted: #475569;
+        --primary: #2563eb;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(55rem 40rem at -10% -20%, rgba(56, 189, 248, 0.35), transparent 60%),
+          radial-gradient(50rem 36rem at 110% -10%, rgba(59, 130, 246, 0.35), transparent 58%),
+          radial-gradient(45rem 34rem at 50% 120%, rgba(14, 165, 233, 0.28), transparent 60%),
+          linear-gradient(145deg, #f8fbff 0%, #eef4ff 45%, #edf7ff 100%);
+      }
+      .card {
+        width: min(620px, 100%);
+        padding: 30px 26px;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(8px);
+      }
+      h1 { margin: 0; font-size: clamp(26px, 3vw, 38px); }
+      p { margin: 12px 0 0; line-height: 1.7; color: var(--muted); font-size: 15px; }
+      .host { margin-top: 8px; font-size: 13px; color: #64748b; }
+      .brand { margin-top: 0; color: var(--primary); font-weight: 600; font-size: 14px; letter-spacing: .02em; }
+      .actions { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
+      .btn {
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+      }
+      .btn-primary {
+        color: #fff;
+        background: linear-gradient(90deg, #2563eb, #3b82f6);
+      }
+      .btn-plain {
+        color: var(--text);
+        border: 1px solid #cbd5e1;
+        background: rgba(248, 250, 252, 0.9);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" role="alert" aria-live="polite">
+      <p class="brand">IO724 STATUS</p>
+      <h1>服务维护中</h1>
+      <p>站点正在维护升级，短时间内暂不可访问。维护完成后将自动恢复。</p>
+      <p id="host" class="host">站点：--</p>
+      <div class="actions">
+        <a class="btn btn-primary" href=".">立即重试</a>
+        <a class="btn btn-plain" href="/">返回首页</a>
+      </div>
+    </main>
+    <script>
+      document.getElementById("host").textContent = "站点：" + location.host;
+    </script>
+  </body>
+</html>

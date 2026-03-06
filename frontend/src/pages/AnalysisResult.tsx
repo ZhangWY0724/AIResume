@@ -8,6 +8,12 @@ import RadarChart from '@/components/RadarChart';
 import { cn } from '@/lib/utils';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 
+const LOADING_STAGES = [
+  '解析简历结构',
+  '评估六维能力',
+  '生成优化建议'
+] as const;
+
 export default function AnalysisResult() {
   const {
     resumeContent,
@@ -36,6 +42,7 @@ export default function AnalysisResult() {
   const [interviewError, setInterviewError] = useState<SseErrorData | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const [expandedImprovement, setExpandedImprovement] = useState<number | null>(null);
+  const [activeLoadingStage, setActiveLoadingStage] = useState(0);
 
   const navigate = useNavigate();
   const requestStartedRef = useRef(false);
@@ -124,6 +131,19 @@ export default function AnalysisResult() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      setActiveLoadingStage(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveLoadingStage((prev) => (prev + 1) % LOADING_STAGES.length);
+    }, 1200);
+
+    return () => window.clearInterval(intervalId);
+  }, [loading]);
+
   // 手动触发面试预测
   const handleGenerateInterview = () => {
     if (!resumeContent) return;
@@ -182,12 +202,6 @@ export default function AnalysisResult() {
     return null;
   }
 
-  const loadingStages = [
-    '解析简历结构',
-    '评估六维能力',
-    '生成优化建议'
-  ];
-
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-8">
@@ -205,19 +219,19 @@ export default function AnalysisResult() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
-              {loadingStages.map((stage, index) => (
+              {LOADING_STAGES.map((stage, index) => (
                 <div
                   key={stage}
                   className={cn(
                     "rounded-xl border px-4 py-3 text-sm flex items-center gap-2",
-                    index === 0 ? "border-primary/30 bg-primary/5" : "bg-muted/30"
+                    index === activeLoadingStage ? "border-primary/30 bg-primary/5" : "bg-muted/30"
                   )}
                 >
                   <span className={cn(
                     "w-2 h-2 rounded-full",
-                    index === 0 ? "bg-primary animate-pulse" : "bg-muted-foreground/40"
+                    index === activeLoadingStage ? "bg-primary animate-pulse" : "bg-muted-foreground/40"
                   )} />
-                  <span className={index === 0 ? "text-foreground font-medium" : "text-muted-foreground"}>
+                  <span className={index === activeLoadingStage ? "text-foreground font-medium" : "text-muted-foreground"}>
                     {stage}
                   </span>
                 </div>
@@ -247,7 +261,7 @@ export default function AnalysisResult() {
 
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            <span>预计还需几秒，请稍候...</span>
+            <span>预计需要1分钟，请稍候...</span>
           </div>
         </div>
       </div>

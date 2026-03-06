@@ -24,14 +24,14 @@ export default function Steps() {
   return (
     <div className="w-full bg-background/80 backdrop-blur-md border-b z-50 relative">
       <div className="container mx-auto px-4 py-4">
-        <div className="relative flex items-center justify-between max-w-3xl mx-auto">
+        <div className="relative flex items-start justify-between max-w-3xl mx-auto">
           
           {/* Progress Line Background */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-secondary -z-10" />
+          <div className="absolute left-0 right-0 top-4 h-0.5 bg-secondary -z-10" />
           
           {/* Active Progress Line */}
           <motion.div 
-            className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-primary -z-10"
+            className="absolute left-0 top-4 h-0.5 bg-primary -z-10"
             initial={{ width: '0%' }}
             animate={{ width: `${(activeIndex / (STEPS.length - 1)) * 100}%` }}
             transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -42,7 +42,7 @@ export default function Steps() {
             const isCompleted = index < activeIndex;
 
             return (
-              <div key={step.id} className="flex flex-col items-center gap-2 bg-background px-2">
+              <div key={step.id} className="flex flex-col items-center gap-2 px-2">
                 <motion.div
                   initial={false}
                   animate={{
