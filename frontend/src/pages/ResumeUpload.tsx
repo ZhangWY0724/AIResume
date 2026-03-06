@@ -13,8 +13,8 @@ type Tab = 'upload' | 'text';
 
 // AI 模型配置
 const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
+  { id: 'gpt54', name: 'GPT-5.4', description: 'OpenAI 兼容接口' },
   { id: 'kilo', name: 'Kilo', description: 'Kilo AI（OpenAI 兼容网关）' },
-  { id: 'zhipu', name: '智谱 AI', description: 'GLM-4 大模型' },
   { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型' },
 ];
 
@@ -38,7 +38,7 @@ export default function ResumeUpload() {
   };
 
   const handleBack = () => {
-    navigate('/');
+    navigate('/select-industry');
   };
 
   if (!selectedIndustry) {
@@ -48,7 +48,7 @@ export default function ResumeUpload() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="mb-4">请先选择行业</p>
-          <button onClick={() => navigate('/')} className="text-primary hover:underline">返回首页</button>
+          <button onClick={() => navigate('/select-industry')} className="text-primary hover:underline">去选择行业</button>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ export default function ResumeUpload() {
               </div>
               <div className="flex gap-2">
                 {AI_MODELS.map((model) => {
-                  const isDisabled = model.id !== 'kilo';
+                  const isDisabled = model.id === 'gemini';
                   const isSelected = selectedModel === model.id;
 
                   return (

@@ -47,7 +47,12 @@ export default function AnalysisResult() {
       return;
     }
 
-    if (!resumeContent || !selectedIndustry) {
+    if (!selectedIndustry) {
+      navigate('/select-industry');
+      return;
+    }
+
+    if (!resumeContent) {
       navigate('/upload');
       return;
     }
@@ -166,6 +171,11 @@ export default function AnalysisResult() {
       }
     });
   };
+
+  if (!selectedIndustry && !loading) {
+    navigate('/select-industry');
+    return null;
+  }
 
   if (!resumeContent && !loading) {
     navigate('/upload');

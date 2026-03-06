@@ -6,11 +6,6 @@ namespace ResumeAlchemist.Shared.DTOs;
 public enum AIModelType
 {
     /// <summary>
-    /// 智谱 AI (默认)
-    /// </summary>
-    Zhipu = 0,
-
-    /// <summary>
     /// Gemini AI
     /// </summary>
     Gemini = 1,
@@ -18,7 +13,12 @@ public enum AIModelType
     /// <summary>
     /// Kilo AI（OpenAI 兼容网关）
     /// </summary>
-    Kilo = 2
+    Kilo = 2,
+
+    /// <summary>
+    /// GPT-5.4（OpenAI 兼容接口）
+    /// </summary>
+    Gpt54 = 3
 }
 
 /// <summary>
@@ -37,9 +37,9 @@ public class AnalyzeRequest
     public string IndustryId { get; set; } = "general";
 
     /// <summary>
-    /// AI 模型类型 (zhipu/gemini)
+    /// AI 模型类型 (gemini/kilo/gpt54)
     /// </summary>
-    public AIModelType ModelType { get; set; } = AIModelType.Zhipu;
+    public AIModelType ModelType { get; set; } = AIModelType.Kilo;
 }
 
 /// <summary>

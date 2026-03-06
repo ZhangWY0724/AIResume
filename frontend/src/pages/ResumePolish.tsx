@@ -50,7 +50,12 @@ export default function ResumePolish() {
 
   // 启动润色
   useEffect(() => {
-    if (!resumeContent || !selectedIndustry) {
+    if (!selectedIndustry) {
+      navigate('/select-industry');
+      return;
+    }
+
+    if (!resumeContent) {
       navigate('/upload');
       return;
     }

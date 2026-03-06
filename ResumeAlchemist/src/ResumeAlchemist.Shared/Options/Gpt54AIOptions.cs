@@ -3,34 +3,31 @@ using System.ComponentModel.DataAnnotations;
 namespace ResumeAlchemist.Shared.Options;
 
 /// <summary>
-/// 智谱 AI 配置选项
+/// GPT-5.4 配置选项（OpenAI 兼容接口）
 /// </summary>
-public class ZhipuAIOptions
+public class Gpt54AIOptions
 {
     /// <summary>
     /// 配置节名称
     /// </summary>
-    public const string SectionName = "ZhipuAI";
+    public const string SectionName = "Gpt54AI";
 
     /// <summary>
     /// API 基础地址
     /// </summary>
     [Required]
-    [Url]
-    public string BaseUrl { get; set; } = "https://open.bigmodel.cn/api/paas/v4/";
+    public string BaseUrl { get; set; } = "http://74.48.108.97:8317/";
 
     /// <summary>
-    /// API 密钥
+    /// API 密钥（可选：某些兼容网关允许匿名调用）
     /// </summary>
-    [Required]
-    [MinLength(10)]
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "glm-4";
+    public string Model { get; set; } = "gpt-5.4";
 
     /// <summary>
     /// 请求超时时间（秒）

@@ -23,5 +23,5 @@ public class PolishRequest
     /// <summary>
     /// AI 模型类型
     /// </summary>
-    public AIModelType ModelType { get; set; } = AIModelType.Zhipu;
+    public AIModelType ModelType { get; set; } = AIModelType.Kilo;
 }

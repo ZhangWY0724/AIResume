@@ -42,18 +42,18 @@ api.interceptors.response.use(
 
 // --- DTO Interfaces ---
 
-// AI 模型类型 (0 = 智谱, 1 = Gemini, 2 = Kilo)
-export type AIModelType = 'zhipu' | 'gemini' | 'kilo';
+// AI 模型类型 (1 = Gemini, 2 = Kilo, 3 = GPT-5.4)
+export type AIModelType = 'gemini' | 'kilo' | 'gpt54';
 
 // 将前端模型类型转换为后端枚举值
 export const modelTypeToNumber = (type: AIModelType): number => {
   switch (type) {
-    case 'zhipu':
-      return 0;
     case 'gemini':
       return 1;
     case 'kilo':
       return 2;
+    case 'gpt54':
+      return 3;
     default: {
       const _exhaustiveCheck: never = type;
       return _exhaustiveCheck;
@@ -249,7 +249,7 @@ export const resumeApi = {
   analyze: async (data: AnalyzeRequest): Promise<AnalyzeResponse> => {
     const requestBody = {
       ...data,
-      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 2,
     };
     const response = await api.post<AnalyzeResponse>('/Resume/analyze', requestBody, {
       timeout: 180000, // 分析等待完整结果返回，超时放宽到 180s
@@ -269,7 +269,7 @@ export const resumeApi = {
     // 转换模型类型为后端枚举值
     const requestBody = {
       ...data,
-      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 2,
     };
 
     console.log('[API] analyzeStream 开始，请求数据:', requestBody);
@@ -381,7 +381,7 @@ export const resumeApi = {
     // 转换模型类型为后端枚举值
     const requestBody = {
       ...data,
-      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 2,
     };
 
     (async () => {
@@ -459,7 +459,7 @@ export const resumeApi = {
   matchJob: async (data: MatchRequest): Promise<MatchResponse> => {
     const requestBody = {
       ...data,
-      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 2,
     };
     const response = await api.post<MatchResponse>('/Resume/match', requestBody);
     return response.data;
@@ -473,7 +473,7 @@ export const resumeApi = {
   predictInterview: async (data: InterviewRequest, signal?: AbortSignal): Promise<InterviewResponse> => {
     const requestBody = {
       ...data,
-      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 0,
+      modelType: data.modelType ? modelTypeToNumber(data.modelType) : 2,
     };
     const response = await api.post<InterviewResponse>('/Resume/interview', requestBody, {
       timeout: 180000, // 面试预测需要更长时间，设置 180s 超时

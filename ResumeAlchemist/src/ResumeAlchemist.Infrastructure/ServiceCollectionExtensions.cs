@@ -20,32 +20,23 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         // 注册 Options 配置
-        services.AddOptions<ZhipuAIOptions>()
-            .Bind(configuration.GetSection(ZhipuAIOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         services.AddOptions<GeminiAIOptions>()
             .Bind(configuration.GetSection(GeminiAIOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Kilo AI：保持可选（不 ValidateOnStart），避免影响现有 Zhipu/Gemini 启动
+        // Kilo AI：保持可选（不 ValidateOnStart）
         services.AddOptions<KiloAIOptions>()
             .Bind(configuration.GetSection(KiloAIOptions.SectionName))
             .ValidateDataAnnotations();
 
+        // GPT-5.4：保持可选（不 ValidateOnStart）
+        services.AddOptions<Gpt54AIOptions>()
+            .Bind(configuration.GetSection(Gpt54AIOptions.SectionName))
+            .ValidateDataAnnotations();
+
         // 注册 AI 客户端工厂
         services.AddSingleton<IAIClientFactory, AIClientFactory>();
-
-        // 配置 HttpClient for 智谱 AI
-        var zhipuOptions = configuration.GetSection(ZhipuAIOptions.SectionName).Get<ZhipuAIOptions>() ?? new ZhipuAIOptions();
-        services.AddHttpClient<ZhipuAIClient>(client =>
-        {
-            client.BaseAddress = new Uri(zhipuOptions.BaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(zhipuOptions.TimeoutSeconds);
-        });
-        services.AddScoped<IZhipuAIClient>(sp => sp.GetRequiredService<ZhipuAIClient>());
 
         // 配置 HttpClient for Gemini AI
         var geminiOptions = configuration.GetSection(GeminiAIOptions.SectionName).Get<GeminiAIOptions>() ?? new GeminiAIOptions();
@@ -63,6 +54,15 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(kiloOptions.TimeoutSeconds);
         });
         services.AddScoped<IKiloAIClient>(sp => sp.GetRequiredService<KiloAIClient>());
+
+        // 配置 HttpClient for GPT-5.4（OpenAI 兼容）
+        var gpt54Options = configuration.GetSection(Gpt54AIOptions.SectionName).Get<Gpt54AIOptions>() ?? new Gpt54AIOptions();
+        services.AddHttpClient<Gpt54AIClient>(client =>
+        {
+            client.BaseAddress = new Uri(gpt54Options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(gpt54Options.TimeoutSeconds);
+        });
+        services.AddScoped<IGpt54AIClient>(sp => sp.GetRequiredService<Gpt54AIClient>());
 
         // 自动扫描并注册 Services 目录下的所有服务
         services.Scan(scan => scan
