@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text;
 using Microsoft.Extensions.Logging;
 
 namespace ResumeAlchemist.Core.Services;
@@ -33,8 +34,19 @@ public static class JsonHelper
         }
         catch (JsonException ex)
         {
-            logger.LogError(ex, "JSON 解析失败，原始内容: {Content}", content);
-            return null;
+            // 常见 AI 输出问题：数组中的对象被错误地加了引号，例如：...},{"{ ... }...
+            // 这里做一次“保守修复”后重试解析，避免因少量格式问题导致整体失败。
+            var repaired = RepairCommonAiJsonIssues(cleanedContent);
+
+            try
+            {
+                return JsonSerializer.Deserialize<T>(repaired, _options);
+            }
+            catch (JsonException retryEx)
+            {
+                logger.LogError(retryEx, "JSON 解析失败，原始内容: {Content}", content);
+                return null;
+            }
         }
     }
 
@@ -76,5 +88,104 @@ public static class JsonHelper
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 修复常见的 AI 输出 JSON 小问题（尽量不影响正常 JSON）。
+    /// 当前主要针对：数组中对象前误加引号，例如：,"{ "name": ... }。
+    /// </summary>
+    private static string RepairCommonAiJsonIssues(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return json;
+        }
+
+        var sb = new StringBuilder(json.Length);
+        var inString = false;
+        var escaped = false;
+
+        for (var i = 0; i < json.Length; i++)
+        {
+            var c = json[i];
+
+            if (inString)
+            {
+                sb.Append(c);
+
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (c == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (c == '"')
+            {
+                var prevNonWs = FindPrevNonWhitespace(json, i - 1);
+                var nextNonWs = FindNextNonWhitespace(json, i + 1);
+                var nextAfterBrace = nextNonWs == '{'
+                    ? FindNextNonWhitespace(json, FindNextNonWhitespaceIndex(json, i + 1) + 1)
+                    : '\0';
+
+                // 仅在“明显是对象起始”的情况下移除多余引号： (,[) " { "
+                if ((prevNonWs == ',' || prevNonWs == '[') && nextNonWs == '{' && nextAfterBrace == '"')
+                {
+                    continue;
+                }
+
+                inString = true;
+                sb.Append(c);
+                continue;
+            }
+
+            sb.Append(c);
+        }
+
+        return sb.ToString();
+    }
+
+    private static char FindPrevNonWhitespace(string s, int startIndex)
+    {
+        for (var i = startIndex; i >= 0; i--)
+        {
+            var c = s[i];
+            if (!char.IsWhiteSpace(c))
+            {
+                return c;
+            }
+        }
+        return '\0';
+    }
+
+    private static int FindNextNonWhitespaceIndex(string s, int startIndex)
+    {
+        for (var i = startIndex; i < s.Length; i++)
+        {
+            if (!char.IsWhiteSpace(s[i]))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static char FindNextNonWhitespace(string s, int startIndex)
+    {
+        var idx = FindNextNonWhitespaceIndex(s, startIndex);
+        return idx >= 0 ? s[idx] : '\0';
     }
 }

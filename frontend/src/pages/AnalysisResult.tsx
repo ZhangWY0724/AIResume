@@ -259,8 +259,10 @@ export default function AnalysisResult() {
                 重新上传
               </button>
               <button
+                disabled
                 onClick={() => navigate('/polish')}
-                className="px-6 py-2 rounded-full bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 transition-all text-sm font-medium flex items-center gap-2"
+                className="px-6 py-2 rounded-full bg-muted text-muted-foreground cursor-not-allowed transition-all text-sm font-medium flex items-center gap-2"
+                title="暂未开放"
               >
                 一键 AI 润色
                 <ChevronRight className="w-4 h-4" />
@@ -419,8 +421,10 @@ export default function AnalysisResult() {
 
                                           <div className="flex justify-end">
                                               <button
+                                                  disabled
                                                   onClick={() => navigate('/polish')}
-                                                  className="text-xs font-medium text-orange-600 hover:text-orange-700 flex items-center gap-1 hover:underline"
+                                                  className="text-xs font-medium text-muted-foreground opacity-50 cursor-not-allowed flex items-center gap-1"
+                                                  title="暂未开放"
                                               >
                                                   去润色页面应用修改 <ChevronRight className="w-3 h-3" />
                                               </button>

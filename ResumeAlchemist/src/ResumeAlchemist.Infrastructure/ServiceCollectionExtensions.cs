@@ -30,6 +30,11 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Kilo AI：保持可选（不 ValidateOnStart），避免影响现有 Zhipu/Gemini 启动
+        services.AddOptions<KiloAIOptions>()
+            .Bind(configuration.GetSection(KiloAIOptions.SectionName))
+            .ValidateDataAnnotations();
+
         // 注册 AI 客户端工厂
         services.AddSingleton<IAIClientFactory, AIClientFactory>();
 
@@ -49,6 +54,15 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(geminiOptions.TimeoutSeconds);
         });
         services.AddScoped<IGeminiAIClient>(sp => sp.GetRequiredService<GeminiAIClient>());
+
+        // 配置 HttpClient for Kilo AI（OpenAI 兼容网关）
+        var kiloOptions = configuration.GetSection(KiloAIOptions.SectionName).Get<KiloAIOptions>() ?? new KiloAIOptions();
+        services.AddHttpClient<KiloAIClient>(client =>
+        {
+            client.BaseAddress = new Uri(kiloOptions.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(kiloOptions.TimeoutSeconds);
+        });
+        services.AddScoped<IKiloAIClient>(sp => sp.GetRequiredService<KiloAIClient>());
 
         // 自动扫描并注册 Services 目录下的所有服务
         services.Scan(scan => scan

@@ -22,6 +22,7 @@ public class AIClientFactory : IAIClientFactory
         {
             AIModelType.Gemini => _serviceProvider.GetRequiredService<GeminiAIClient>(),
             AIModelType.Zhipu => _serviceProvider.GetRequiredService<ZhipuAIClient>(),
+            AIModelType.Kilo => _serviceProvider.GetRequiredService<KiloAIClient>(),
             _ => _serviceProvider.GetRequiredService<ZhipuAIClient>()
         };
     }

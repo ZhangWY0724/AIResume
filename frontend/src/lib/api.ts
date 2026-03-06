@@ -42,12 +42,23 @@ api.interceptors.response.use(
 
 // --- DTO Interfaces ---
 
-// AI 模型类型 (0 = 智谱, 1 = Gemini)
-export type AIModelType = 'zhipu' | 'gemini';
+// AI 模型类型 (0 = 智谱, 1 = Gemini, 2 = Kilo)
+export type AIModelType = 'zhipu' | 'gemini' | 'kilo';
 
 // 将前端模型类型转换为后端枚举值
 export const modelTypeToNumber = (type: AIModelType): number => {
-  return type === 'gemini' ? 1 : 0;
+  switch (type) {
+    case 'zhipu':
+      return 0;
+    case 'gemini':
+      return 1;
+    case 'kilo':
+      return 2;
+    default: {
+      const _exhaustiveCheck: never = type;
+      return _exhaustiveCheck;
+    }
+  }
 };
 
 export interface DimensionScore {

@@ -13,6 +13,7 @@ type Tab = 'upload' | 'text';
 
 // AI 模型配置
 const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
+  { id: 'kilo', name: 'Kilo', description: 'Kilo AI（OpenAI 兼容网关）' },
   { id: 'zhipu', name: '智谱 AI', description: 'GLM-4 大模型' },
   { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型' },
 ];
@@ -127,21 +128,29 @@ export default function ResumeUpload() {
                 <span>AI 模型：</span>
               </div>
               <div className="flex gap-2">
-                {AI_MODELS.map((model) => (
-                  <button
-                    key={model.id}
-                    onClick={() => setSelectedModel(model.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
-                      selectedModel === model.id
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
-                    title={model.description}
-                  >
-                    {model.name}
-                  </button>
-                ))}
+                {AI_MODELS.map((model) => {
+                  const isDisabled = model.id !== 'kilo';
+                  const isSelected = selectedModel === model.id;
+
+                  return (
+                    <button
+                      key={model.id}
+                      disabled={isDisabled}
+                      onClick={() => setSelectedModel(model.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                        isDisabled
+                          ? "bg-secondary/50 text-muted-foreground opacity-50 cursor-not-allowed"
+                          : isSelected
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      )}
+                      title={model.description}
+                    >
+                      {model.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

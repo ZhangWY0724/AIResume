@@ -13,7 +13,12 @@ public enum AIModelType
     /// <summary>
     /// Gemini AI
     /// </summary>
-    Gemini = 1
+    Gemini = 1,
+
+    /// <summary>
+    /// Kilo AI（OpenAI 兼容网关）
+    /// </summary>
+    Kilo = 2
 }
 
 /// <summary>
