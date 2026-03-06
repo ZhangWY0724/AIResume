@@ -87,6 +87,7 @@ export interface AnalyzeResponse {
   strengths: string[];
   improvements: ImprovementItem[];
   atsScore: number;
+  industryFitScore?: number;
   missingKeywords: string[];
 }
 

@@ -31,9 +31,18 @@ interface ResumeState {
   clearAnalysisCache: () => void;
 }
 
-// 简单的内容哈希函数，用于判断简历内容是否变化
+// 使用 FNV-1a 计算全量内容哈希，避免 length + 前缀带来的碰撞误判
 const hashContent = (content: string, industryId: string | null, modelType: string): string => {
-  return `${industryId}:${modelType}:${content.length}:${content.substring(0, 100)}`;
+  const normalized = content.replace(/\r\n/g, '\n').trim();
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < normalized.length; i++) {
+    hash ^= normalized.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  const hashHex = (hash >>> 0).toString(16).padStart(8, '0');
+  return `${industryId ?? 'general'}:${modelType}:${normalized.length}:${hashHex}`;
 };
 
 export const useResumeStore = create<ResumeState>((set) => ({

@@ -1,4 +1,19 @@
-import { Code2, Lightbulb, Palette, BarChart3, Megaphone, Briefcase, Users } from 'lucide-react';
+import {
+  Code2,
+  Lightbulb,
+  Palette,
+  BarChart3,
+  Megaphone,
+  Briefcase,
+  Users,
+  GraduationCap,
+  Stethoscope,
+  Factory,
+  Building2,
+  Scale,
+  Settings2,
+  Headphones
+} from 'lucide-react';
 
 export const INDUSTRIES = [
   {
@@ -32,6 +47,62 @@ export const INDUSTRIES = [
     description: '数据分析/BI',
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
+  },
+  {
+    id: 'education',
+    name: '教育行业',
+    icon: GraduationCap,
+    description: '高中/大学/考研辅导',
+    color: 'text-indigo-500',
+    bgColor: 'bg-indigo-500/10',
+  },
+  {
+    id: 'healthcare',
+    name: '医疗健康',
+    icon: Stethoscope,
+    description: '医生/护士/医技/医疗运营',
+    color: 'text-rose-500',
+    bgColor: 'bg-rose-500/10',
+  },
+  {
+    id: 'manufacturing',
+    name: '制造业/工业',
+    icon: Factory,
+    description: '工艺/质量/设备/供应链',
+    color: 'text-cyan-500',
+    bgColor: 'bg-cyan-500/10',
+  },
+  {
+    id: 'construction',
+    name: '建筑/工程',
+    icon: Building2,
+    description: '土木/造价/BIM/项目管理',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-500/10',
+  },
+  {
+    id: 'legal',
+    name: '法务/合规',
+    icon: Scale,
+    description: '法务顾问/合规专员',
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-500/10',
+  },
+  {
+    id: 'operations',
+    name: '行政/运营',
+    icon: Settings2,
+    description: '流程优化/综合运营',
+    color: 'text-teal-500',
+    bgColor: 'bg-teal-500/10',
+  },
+  {
+    id: 'customer_service',
+    name: '客服/呼叫中心',
+    icon: Headphones,
+    description: '服务质检/投诉处理/工单',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-500/10',
   },
   {
     id: 'marketing',

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Type, ArrowLeft, ArrowRight, Sparkles, Bot } from 'lucide-react';
+import { FileText, Type, ArrowLeft, ArrowRight, Sparkles, Bot, ShieldAlert, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useResumeStore } from '@/store/useResumeStore';
 import FileUploader from '@/components/FileUploader';
@@ -20,6 +20,7 @@ const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
 
 export default function ResumeUpload() {
   const [activeTab, setActiveTab] = useState<Tab>('upload');
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const { selectedIndustry, resumeContent, selectedModel, setSelectedModel } = useResumeStore();
   const navigate = useNavigate();
 
@@ -28,6 +29,11 @@ export default function ResumeUpload() {
 
   const handleNext = () => {
     if (!resumeContent.trim()) return;
+    setShowDisclaimer(true);
+  };
+
+  const handleConfirmAnalyze = () => {
+    setShowDisclaimer(false);
     navigate('/result');
   };
 
@@ -170,6 +176,51 @@ export default function ResumeUpload() {
             </button>
           </div>
         </div>
+
+        {showDisclaimer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+              onClick={() => setShowDisclaimer(false)}
+            />
+            <div className="relative w-full max-w-2xl rounded-2xl border bg-background shadow-2xl">
+              <div className="flex items-start justify-between p-5 border-b">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-lg font-semibold">分析前免责声明</h3>
+                </div>
+                <button
+                  onClick={() => setShowDisclaimer(false)}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="关闭"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3 text-sm text-muted-foreground leading-relaxed">
+                <p>1. 您提交的简历内容将发送给 AI 模型进行解析与生成，用于完成当前分析与润色任务。</p>
+                <p>2. AI 结果受模型能力影响，可能存在偏差或不完整信息，仅供参考，请您自行核验后使用。</p>
+                <p>3. 本站不会将您的简历内容进行存储、分发或对外共享。</p>
+              </div>
+
+              <div className="p-5 border-t flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDisclaimer(false)}
+                  className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleConfirmAnalyze}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  同意并开始分析
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

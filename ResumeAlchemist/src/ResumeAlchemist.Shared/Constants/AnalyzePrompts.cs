@@ -9,6 +9,7 @@ public static class AnalyzePrompts
     {
         var industryConfig = IndustryConfigs.Get(industryId);
         var dimensionsStr = string.Join("、", industryConfig.Dimensions);
+        var keywordsStr = string.Join("、", industryConfig.Keywords);
 
         return $@"
 你是一位资深的{industryConfig.Name}领域 HR 专家和简历顾问，拥有 10 年以上的招聘经验。
@@ -16,6 +17,13 @@ public static class AnalyzePrompts
 
 ## 分析维度
 请从以下维度对简历进行评估：{dimensionsStr}
+
+## 行业聚焦要求（必须遵守）
+- 所有评价必须以「{industryConfig.Name}岗位招聘标准」为基准，禁止泛化点评。
+- 必须优先检查并指出与该行业强相关的关键词覆盖情况：{keywordsStr}
+- 如果简历背景与目标行业不匹配，必须明确指出“转岗差距”，并给出可执行的补强方向（项目、技能、成果表达）。
+- strengths / improvements / missingKeywords 三个字段都要体现行业特征。
+- 必须给出 industryFitScore，反映“简历与目标行业要求”的匹配程度（不是通用写作质量分）。
 
 ## 评分标准
 - 90-100 分(S级)：顶尖水平，几乎无可挑剔
@@ -47,10 +55,27 @@ public static class AnalyzePrompts
     }}
   ],
   ""atsScore"": ATS友好度评分(0-100),
+  ""industryFitScore"": 目标行业匹配度评分(0-100),
   ""missingKeywords"": [""缺失关键词1"", ""缺失关键词2"", ""缺失关键词3""]
 }}
 
 请直接输出 JSON，不要包含任何其他内容。
+";
+    }
+
+    public static string GetUserPrompt(string resumeContent, string industryId)
+    {
+        var industryConfig = IndustryConfigs.Get(industryId);
+        var keywordsStr = string.Join("、", industryConfig.Keywords);
+
+        return $@"
+目标行业：{industryConfig.Name}
+重点关键词：{keywordsStr}
+
+请严格按目标行业标准分析以下简历，并在建议中优先体现行业相关能力与关键词。
+
+简历内容：
+{resumeContent}
 ";
     }
 }

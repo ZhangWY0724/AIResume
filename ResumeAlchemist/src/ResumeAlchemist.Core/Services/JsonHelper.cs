@@ -155,7 +155,111 @@ public static class JsonHelper
             sb.Append(c);
         }
 
+        var quoteFixed = sb.ToString();
+        return RepairJsonStructure(quoteFixed);
+    }
+
+    /// <summary>
+    /// 修复结构性问题：
+    /// 1) 移除不匹配的右括号/右中括号（例如多出的 ]）
+    /// 2) 移除数组或对象结束前的尾逗号（例如 ,] / ,}）
+    /// </summary>
+    private static string RepairJsonStructure(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return json;
+        }
+
+        var stack = new Stack<char>();
+        var sb = new StringBuilder(json.Length);
+        var inString = false;
+        var escaped = false;
+
+        for (var i = 0; i < json.Length; i++)
+        {
+            var c = json[i];
+
+            if (inString)
+            {
+                sb.Append(c);
+
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (c == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if (c == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = true;
+                sb.Append(c);
+                continue;
+            }
+
+            if (c == '{' || c == '[')
+            {
+                stack.Push(c);
+                sb.Append(c);
+                continue;
+            }
+
+            if (c == '}' || c == ']')
+            {
+                var expectedOpen = c == '}' ? '{' : '[';
+                if (stack.Count > 0 && stack.Peek() == expectedOpen)
+                {
+                    RemoveTrailingComma(sb);
+                    stack.Pop();
+                    sb.Append(c);
+                }
+                // 遇到不匹配闭合符号时直接忽略
+                continue;
+            }
+
+            sb.Append(c);
+        }
+
+        // 尾部如有未闭合对象/数组，补齐闭合符号
+        while (stack.Count > 0)
+        {
+            var open = stack.Pop();
+            RemoveTrailingComma(sb);
+            sb.Append(open == '{' ? '}' : ']');
+        }
+
         return sb.ToString();
+    }
+
+    private static void RemoveTrailingComma(StringBuilder sb)
+    {
+        for (var i = sb.Length - 1; i >= 0; i--)
+        {
+            if (char.IsWhiteSpace(sb[i]))
+            {
+                continue;
+            }
+
+            if (sb[i] == ',')
+            {
+                sb.Remove(i, 1);
+            }
+            break;
+        }
     }
 
     private static char FindPrevNonWhitespace(string s, int startIndex)

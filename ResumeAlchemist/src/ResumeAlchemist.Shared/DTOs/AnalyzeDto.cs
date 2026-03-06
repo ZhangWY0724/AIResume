@@ -32,7 +32,7 @@ public class AnalyzeRequest
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// 行业ID (tech/finance/marketing/general)
+    /// 行业ID (programmer/pm/designer/analyst/education/healthcare/manufacturing/construction/legal/operations/customer_service/marketing/sales/hr/general)
     /// </summary>
     public string IndustryId { get; set; } = "general";
 
@@ -81,6 +81,11 @@ public class AnalyzeResponse
     /// ATS 友好度评分 (0-100)
     /// </summary>
     public int AtsScore { get; set; }
+
+    /// <summary>
+    /// 目标行业匹配度评分 (0-100)
+    /// </summary>
+    public int IndustryFitScore { get; set; }
 
     /// <summary>
     /// 缺失的行业关键词

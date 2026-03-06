@@ -17,7 +17,8 @@ export default function AnalysisResult() {
     analysisContentHash,
     setAnalysisResult,
     interviewResult,
-    setInterviewResult
+    setInterviewResult,
+    clearAnalysisCache
   } = useResumeStore();
 
   // 计算当前内容的哈希值，判断是否有有效缓存
@@ -252,6 +253,7 @@ export default function AnalysisResult() {
           onRetry={() => {
             setError(null);
             requestStartedRef.current = false;
+            clearAnalysisCache();
             navigate('/upload');
           }}
           retryText="返回重试"
@@ -264,6 +266,8 @@ export default function AnalysisResult() {
     return null;
   }
 
+  const industryFitScore = Math.max(0, Math.min(100, result.industryFitScore ?? result.atsScore));
+
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl animate-in fade-in duration-700 space-y-8">
 
@@ -271,11 +275,16 @@ export default function AnalysisResult() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
              <h1 className="text-3xl font-bold tracking-tight">分析报告</h1>
-             <p className="text-muted-foreground mt-1">AI 全维度诊断完成，为您生成专属优化方案</p>
+             <p className="text-xs text-muted-foreground mt-1">
+               免责声明：AI 分析结果受模型能力影响，仅供参考，请结合实际情况进行判断与完善。
+             </p>
           </div>
           <div className="flex gap-3">
               <button
-                onClick={() => navigate('/upload')}
+                onClick={() => {
+                  clearAnalysisCache();
+                  navigate('/upload');
+                }}
                 className="px-4 py-2 rounded-full border hover:bg-secondary transition-colors text-sm font-medium"
               >
                 重新上传
@@ -381,6 +390,29 @@ export default function AnalysisResult() {
                           initial={{ width: 0 }}
                           animate={{ width: `${result.atsScore}%` }}
                           transition={{ duration: 1, delay: 0.5 }}
+                      />
+                  </div>
+
+                  <div className="flex items-center justify-between mb-2 mt-4">
+                      <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">目标行业匹配度</span>
+                          <div className="group relative cursor-help">
+                              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 bg-popover text-popover-foreground text-xs rounded-md border shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center">
+                                  评分越高，说明简历内容与您选择行业的招聘要求越贴近。
+                              </div>
+                          </div>
+                      </div>
+                      <span className="font-bold text-primary">{industryFitScore}%</span>
+                  </div>
+                  <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
+                      <motion.div
+                          className={cn("h-full rounded-full",
+                              industryFitScore >= 80 ? "bg-green-500" : industryFitScore >= 60 ? "bg-yellow-500" : "bg-orange-500"
+                          )}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${industryFitScore}%` }}
+                          transition={{ duration: 1, delay: 0.6 }}
                       />
                   </div>
               </div>
