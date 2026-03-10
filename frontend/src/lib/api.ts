@@ -188,7 +188,7 @@ export type PolishStreamCallback = {
  * 统一处理流式响应错误 (包含 429 处理)
  */
 async function handleStreamResponse(
-  response: Response, 
+  response: Response,
   onError?: (error: SseErrorData) => void
 ): Promise<ReadableStreamDefaultReader<Uint8Array> | null> {
   console.log('[API] Stream fetch 响应状态:', response.status, response.ok);
@@ -200,7 +200,7 @@ async function handleStreamResponse(
     if (response.status === 429) {
       const retryAfter = errorData.retryAfterSeconds ||
         parseInt(response.headers.get('Retry-After') || '30', 10);
-      
+
       onError?.({
         message: errorData.message || 'AI 服务请求过于频繁，请稍后重试',
         code: 'RATE_LIMIT_EXCEEDED',
@@ -209,9 +209,9 @@ async function handleStreamResponse(
       return null;
     }
 
-    onError?.({ 
-      message: errorData.message || `请求失败 (${response.status})`, 
-      code: 'HTTP_ERROR' 
+    onError?.({
+      message: errorData.message || `请求失败 (${response.status})`,
+      code: 'HTTP_ERROR'
     });
     return null;
   }
@@ -234,7 +234,7 @@ export const resumeApi = {
   uploadFile: async (file: File): Promise<ImportResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post<ImportResponse>('/Resume/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -291,7 +291,7 @@ export const resumeApi = {
 
         console.log('[API] 开始读取 SSE 流...');
         const decoder = new TextDecoder();
-        
+
         let buffer = '';
         let currentEvent = '';
         let currentData = '';
@@ -304,7 +304,7 @@ export const resumeApi = {
           }
 
           buffer += decoder.decode(value, { stream: true });
-          
+
           // Split by double newline to separate event blocks if possible, 
           // but robust parsing processes line by line
           const lines = buffer.split(/\r?\n/);
@@ -316,32 +316,32 @@ export const resumeApi = {
               // Empty line triggers dispatch
               if (currentData) {
                 try {
-                   // Dispatch logic
-                   const jsonStr = currentData;
-                   console.log(`[API] Dispatching event: ${currentEvent || 'message'}`);
-                   
-                   const eventData = JSON.parse(jsonStr);
-                   const type = currentEvent || 'message';
+                  // Dispatch logic
+                  const jsonStr = currentData;
+                  console.log(`[API] Dispatching event: ${currentEvent || 'message'}`);
 
-                   switch (type) {
-                     case 'progress':
-                       callbacks.onProgress?.(eventData as SseProgressData);
-                       break;
-                     case 'chunk':
-                       callbacks.onChunk?.(eventData.content);
-                       break;
-                     case 'complete':
-                       console.log('[API] 触发 onComplete 回调');
-                       callbacks.onComplete?.(eventData as AnalyzeResponse);
-                       break;
-                     case 'error':
-                       callbacks.onError?.(eventData as SseErrorData);
-                       break;
-                     default:
-                       console.log('[API] Unhandled event type:', type);
-                   }
+                  const eventData = JSON.parse(jsonStr);
+                  const type = currentEvent || 'message';
+
+                  switch (type) {
+                    case 'progress':
+                      callbacks.onProgress?.(eventData as SseProgressData);
+                      break;
+                    case 'chunk':
+                      callbacks.onChunk?.(eventData.content);
+                      break;
+                    case 'complete':
+                      console.log('[API] 触发 onComplete 回调');
+                      callbacks.onComplete?.(eventData as AnalyzeResponse);
+                      break;
+                    case 'error':
+                      callbacks.onError?.(eventData as SseErrorData);
+                      break;
+                    default:
+                      console.log('[API] Unhandled event type:', type);
+                  }
                 } catch (e) {
-                   console.warn('解析 SSE 数据失败:', currentData, e);
+                  console.warn('解析 SSE 数据失败:', currentData, e);
                 }
               }
               // Reset state for next event
@@ -494,4 +494,20 @@ export const resumeApi = {
     });
     return response.data;
   },
+};
+
+// --- 网站统计 API ---
+
+export interface SiteStatsResponse {
+  resumesUploaded: number;
+  resumesAnalyzed: number;
+  resumesPolished: number;
+}
+
+/**
+ * 获取网站使用统计数据
+ */
+export const getStats = async (): Promise<SiteStatsResponse> => {
+  const response = await api.get<SiteStatsResponse>('/Stats');
+  return response.data;
 };

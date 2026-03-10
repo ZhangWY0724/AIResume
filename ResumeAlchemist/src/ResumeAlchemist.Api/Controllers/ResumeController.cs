@@ -25,6 +25,7 @@ public class ResumeController : ControllerBase
     private readonly IResumeParserService _parserService;
     private readonly IInterviewPredictorService _interviewService;
     private readonly IPdfExportService _pdfExportService;
+    private readonly ISiteStatsService _statsService;
     private readonly ILogger<ResumeController> _logger;
 
     public ResumeController(
@@ -34,6 +35,7 @@ public class ResumeController : ControllerBase
         IResumeParserService parserService,
         IInterviewPredictorService interviewService,
         IPdfExportService pdfExportService,
+        ISiteStatsService statsService,
         ILogger<ResumeController> logger)
     {
         _analyzerService = analyzerService;
@@ -42,6 +44,7 @@ public class ResumeController : ControllerBase
         _parserService = parserService;
         _interviewService = interviewService;
         _pdfExportService = pdfExportService;
+        _statsService = statsService;
         _logger = logger;
     }
 
@@ -66,7 +69,12 @@ public class ResumeController : ControllerBase
 
         _logger.LogInformation("收到简历分析请求");
         var result = await _analyzerService.AnalyzeAsync(request, cancellationToken);
+
+        // 分析成功，统计 +1
+        await _statsService.IncrementAsync(SiteStatsService.Metrics.ResumesAnalyzed);
+
         return Ok(result);
+        
     }
 
     /// <summary>
@@ -167,6 +175,9 @@ public class ResumeController : ControllerBase
 
             await SendSseEvent("complete", result, jsonOptions, cancellationToken);
 
+            // 分析成功，统计 +1
+            await _statsService.IncrementAsync(SiteStatsService.Metrics.ResumesAnalyzed);
+
             _logger.LogInformation("流式分析完成，评分: {Score}", result.Score);
         }
         catch (Exception ex)
@@ -255,6 +266,9 @@ public class ResumeController : ControllerBase
             // 发送完成事件
             await SendSseEvent("done", new { }, jsonOptions, cancellationToken);
 
+            // 润色成功，统计 +1
+            await _statsService.IncrementAsync(SiteStatsService.Metrics.ResumesPolished);
+
             _logger.LogInformation("流式润色完成");
         }
         catch (Exception ex)
@@ -323,6 +337,9 @@ public class ResumeController : ControllerBase
         {
             return BadRequest(result);
         }
+
+        // 上传成功，统计 +1
+        await _statsService.IncrementAsync(SiteStatsService.Metrics.ResumesUploaded);
 
         return Ok(result);
     }
