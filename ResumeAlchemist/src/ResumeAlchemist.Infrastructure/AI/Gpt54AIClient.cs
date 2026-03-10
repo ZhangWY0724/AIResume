@@ -16,7 +16,7 @@ using ResumeAlchemist.Shared.Options;
 namespace ResumeAlchemist.Infrastructure.AI;
 
 /// <summary>
-/// GPT-5.4 客户端实现（OpenAI 兼容 Chat Completions）
+/// GPT-5.2 客户端实现（OpenAI 兼容 Chat Completions）
 /// </summary>
 public class Gpt54AIClient : IGpt54AIClient, IAIClient
 {
@@ -65,14 +65,14 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "调用 GPT-5.4 API 失败");
+            _logger.LogError(ex, "调用 GPT-5.2 API 失败");
             throw;
         }
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
-            _logger.LogWarning("GPT-5.4 请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
+            _logger.LogWarning("GPT-5.2 请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
             throw new AIRateLimitException(
                 "AI 服务请求过于频繁，请稍后重试",
                 retryAfter.HasValue ? (int)retryAfter.Value : 30);
@@ -85,11 +85,11 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
 
         if (!string.IsNullOrWhiteSpace(content))
         {
-            _logger.LogDebug("GPT-5.4 响应成功，长度: {Length}", content.Length);
+            _logger.LogDebug("GPT-5.2 响应成功，长度: {Length}", content.Length);
             return content;
         }
 
-        _logger.LogWarning("GPT-5.4 响应格式异常或内容为空");
+        _logger.LogWarning("GPT-5.2 响应格式异常或内容为空");
         return string.Empty;
     }
 
@@ -118,14 +118,14 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "调用 GPT-5.4 流式 API 失败");
+            _logger.LogError(ex, "调用 GPT-5.2 流式 API 失败");
             throw;
         }
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
-            _logger.LogWarning("GPT-5.4 流式请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
+            _logger.LogWarning("GPT-5.2 流式请求频率超限 (429)，建议等待 {RetryAfter} 秒后重试", retryAfter);
             throw new AIRateLimitException(
                 "AI 服务请求过于频繁，请稍后重试",
                 retryAfter.HasValue ? (int)retryAfter.Value : 30);
@@ -168,7 +168,7 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "解析 GPT-5.4 流式响应失败: {Data}", data);
+                _logger.LogWarning(ex, "解析 GPT-5.2 流式响应失败: {Data}", data);
                 continue;
             }
 
@@ -212,7 +212,7 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
 internal class Gpt54ChatRequest
 {
     [JsonPropertyName("model")]
-    public string Model { get; set; } = "gpt-5.4";
+    public string Model { get; set; } = "GPT-5.2";
 
     [JsonPropertyName("messages")]
     public List<Gpt54Message> Messages { get; set; } = new();

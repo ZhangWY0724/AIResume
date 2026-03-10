@@ -211,6 +211,7 @@ public class ResumeParserService : IResumeParserService
 | pm | 产品经理 | Lightbulb | 产品规划/用户研究 |
 | designer | UI/UX设计师 | Palette | 视觉/交互设计 |
 | analyst | 数据分析师 | BarChart3 | 数据分析/BI |
+| ai_ml | AI/大模型 | Brain | 算法/NLP/CV/大模型应用 |
 | marketing | 市场/运营 | Megaphone | 品牌/增长/内容 |
 | sales | 销售 | Handshake | 客户开发/商务 |
 | hr | HR | Users | 招聘/组织发展 |

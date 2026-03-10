@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(KiloAIOptions.SectionName))
             .ValidateDataAnnotations();
 
-        // GPT-5.4：保持可选（不 ValidateOnStart）
+        // GPT-5.2：保持可选（不 ValidateOnStart）
         services.AddOptions<Gpt54AIOptions>()
             .Bind(configuration.GetSection(Gpt54AIOptions.SectionName))
             .ValidateDataAnnotations();
@@ -55,7 +55,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddScoped<IKiloAIClient>(sp => sp.GetRequiredService<KiloAIClient>());
 
-        // 配置 HttpClient for GPT-5.4（OpenAI 兼容）
+        // 配置 HttpClient for GPT-5.2（OpenAI 兼容）
         var gpt54Options = configuration.GetSection(Gpt54AIOptions.SectionName).Get<Gpt54AIOptions>() ?? new Gpt54AIOptions();
         services.AddHttpClient<Gpt54AIClient>(client =>
         {
