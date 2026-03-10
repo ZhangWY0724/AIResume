@@ -13,7 +13,7 @@ type Tab = 'upload' | 'text';
 
 // AI 模型配置
 const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
-  { id: 'gpt54', name: 'GPT-5.4', description: 'OpenAI 兼容接口' },
+  { id: 'gpt54', name: 'GPT-5.2', description: 'OpenAI 兼容接口' },
   { id: 'kilo', name: 'Kilo', description: 'Kilo AI（OpenAI 兼容网关）' },
   { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型' },
 ];
@@ -58,18 +58,18 @@ export default function ResumeUpload() {
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:30px_30px] pointer-events-none" />
-      
+
       {/* Header */}
       <header className="relative z-10 border-b bg-background/80 backdrop-blur-md sticky top-0">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <button 
+          <button
             onClick={handleBack}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             重选行业
           </button>
-          
+
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">当前行业：</span>
             <span className={cn("px-2 py-0.5 rounded-md text-xs font-medium bg-secondary", industry?.color)}>
@@ -97,8 +97,8 @@ export default function ResumeUpload() {
             onClick={() => setActiveTab('upload')}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all",
-              activeTab === 'upload' 
-                ? "bg-background text-foreground shadow-sm" 
+              activeTab === 'upload'
+                ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/50"
             )}
           >
@@ -109,8 +109,8 @@ export default function ResumeUpload() {
             onClick={() => setActiveTab('text')}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all",
-              activeTab === 'text' 
-                ? "bg-background text-foreground shadow-sm" 
+              activeTab === 'text'
+                ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-background/50"
             )}
           >
@@ -121,7 +121,7 @@ export default function ResumeUpload() {
 
         {/* Content Area */}
         <div className="w-full max-w-4xl mb-12 min-h-[400px]">
-           {activeTab === 'upload' ? <FileUploader /> : <ResumeInput />}
+          {activeTab === 'upload' ? <FileUploader /> : <ResumeInput />}
         </div>
 
         {/* Action Bar */}

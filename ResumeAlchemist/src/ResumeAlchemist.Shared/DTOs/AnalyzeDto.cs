@@ -16,7 +16,7 @@ public enum AIModelType
     Kilo = 2,
 
     /// <summary>
-    /// GPT-5.4（OpenAI 兼容接口）
+    /// GPT-5.2（OpenAI 兼容接口）
     /// </summary>
     Gpt54 = 3
 }
@@ -32,7 +32,7 @@ public class AnalyzeRequest
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// 行业ID (programmer/pm/designer/analyst/education/healthcare/manufacturing/construction/legal/operations/customer_service/marketing/sales/hr/general)
+    /// 行业ID (programmer/pm/designer/analyst/ai_ml/education/healthcare/manufacturing/construction/legal/operations/customer_service/marketing/sales/hr/general)
     /// </summary>
     public string IndustryId { get; set; } = "general";
 

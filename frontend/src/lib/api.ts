@@ -42,7 +42,7 @@ api.interceptors.response.use(
 
 // --- DTO Interfaces ---
 
-// AI 模型类型 (1 = Gemini, 2 = Kilo, 3 = GPT-5.4)
+// AI 模型类型 (1 = Gemini, 2 = Kilo, 3 = GPT-5.2)
 export type AIModelType = 'gemini' | 'kilo' | 'gpt54';
 
 // 将前端模型类型转换为后端枚举值

@@ -3,6 +3,7 @@ import {
   Lightbulb,
   Palette,
   BarChart3,
+  Brain,
   Megaphone,
   Briefcase,
   Users,
@@ -47,6 +48,14 @@ export const INDUSTRIES = [
     description: '数据分析/BI',
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
+  },
+  {
+    id: 'ai_ml',
+    name: 'AI/大模型',
+    icon: Brain,
+    description: '算法/NLP/CV/大模型应用',
+    color: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/10',
   },
   {
     id: 'education',

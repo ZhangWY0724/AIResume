@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ResumeAlchemist.Shared.Options;
 
 /// <summary>
-/// GPT-5.4 配置选项（OpenAI 兼容接口）
+/// GPT-5.2 配置选项（OpenAI 兼容接口）
 /// </summary>
 public class Gpt54AIOptions
 {
@@ -27,7 +27,7 @@ public class Gpt54AIOptions
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "gpt-5.4";
+    public string Model { get; set; } = "GPT-5.2";
 
     /// <summary>
     /// 请求超时时间（秒）

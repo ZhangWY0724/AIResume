@@ -259,6 +259,24 @@ public static class IndustryConfigs
                 "社交媒体", "SEO", "转化率", "用户运营"
             }
         },
+        ["ai_ml"] = new IndustryConfig
+        {
+            Id = "ai_ml",
+            Name = "AI/大模型",
+            Dimensions = new[]
+            {
+                "算法与模型能力",
+                "数据工程能力",
+                "工程落地能力",
+                "业务理解与创新",
+                "技术视野与学习"
+            },
+            Keywords = new[]
+            {
+                "大模型", "Prompt Engineering", "RAG", "微调/Fine-tuning",
+                "推理优化", "向量数据库", "Agent", "模型评估"
+            }
+        },
         ["general"] = new IndustryConfig
         {
             Id = "general",
@@ -302,7 +320,14 @@ public static class IndustryConfigs
         ["operation"] = "operations",
         ["support"] = "customer_service",
         ["cs"] = "customer_service",
-        ["customer"] = "customer_service"
+        ["customer"] = "customer_service",
+        ["ai"] = "ai_ml",
+        ["ml"] = "ai_ml",
+        ["llm"] = "ai_ml",
+        ["deeplearning"] = "ai_ml",
+        ["machinelearning"] = "ai_ml",
+        ["nlp"] = "ai_ml",
+        ["cv"] = "ai_ml"
     };
 
     /// <summary>
