@@ -212,7 +212,7 @@ public class Gpt54AIClient : IGpt54AIClient, IAIClient
 internal class Gpt54ChatRequest
 {
     [JsonPropertyName("model")]
-    public string Model { get; set; } = "GPT-5.2";
+    public string Model { get; set; } = "gpt-5.2";
 
     [JsonPropertyName("messages")]
     public List<Gpt54Message> Messages { get; set; } = new();
