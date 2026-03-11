@@ -35,30 +35,58 @@ function AnimatedCounter({ value, duration = 2 }: { value: number; duration?: nu
 }
 
 /**
- * 单个统计项 — 纯文本内联样式，与 Footer 版权文字风格一致
+ * 单个统计项 — 纯文本内联样式
  */
-function StatItem({ icon, label, value, busuanziId }: {
+function StatItem({ icon, label, value }: {
     icon: React.ReactNode;
     label: string;
-    value?: number;
-    busuanziId?: string;
+    value: number;
 }) {
     return (
         <span className="inline-flex items-center gap-1">
             <span className="text-slate-400">{icon}</span>
             <span>{label}</span>
             <span className="font-medium text-slate-600 tabular-nums">
-                {busuanziId ? <span id={busuanziId} /> : <AnimatedCounter value={value ?? 0} />}
+                <AnimatedCounter value={value} />
             </span>
         </span>
     );
 }
 
 /**
- * 网站使用统计 — 纯文本风格，与 Footer 其他元素融为一体
+ * 结构化获取新版不蒜子 (bsz.saop.cc) 数据
+ */
+function useBszData() {
+    const [data, setData] = useState<{ pv: number; uv: number } | null>(null);
+
+    useEffect(() => {
+        // 使用 POST 获取同时可以计数
+        fetch('https://bsz.saop.cc/api', {
+            method: 'POST',
+            credentials: 'omit', // 跨域请求不需要带本站 cookie
+            headers: { 'x-bsz-referer': window.location.href }
+        })
+            .then(res => res.json())
+            .then(json => {
+                if (json.success && json.data) {
+                    setData({
+                        pv: json.data.site_pv || 0,
+                        uv: json.data.site_uv || 0
+                    });
+                }
+            })
+            .catch(err => console.error("Failed to fetch bsz.saop.cc data", err));
+    }, []);
+
+    return data;
+}
+
+/**
+ * 网站使用统计 — 纯文本风格，与 Footer 融为一体
  */
 export default function SiteStats() {
     const [stats, setStats] = useState<SiteStatsResponse | null>(null);
+    const bszData = useBszData();
 
     useEffect(() => {
         getStats()
@@ -82,8 +110,10 @@ export default function SiteStats() {
                     <span className="hidden md:inline text-slate-300">|</span>
                 </>
             )}
-            <StatItem icon={<Eye className="w-3.5 h-3.5" />} label="访问" busuanziId="busuanzi_value_site_pv" />
-            <StatItem icon={<Users className="w-3.5 h-3.5" />} label="访客" busuanziId="busuanzi_value_site_uv" />
+
+            {/* 新版不蒜子直接输出数据 */}
+            <StatItem icon={<Eye className="w-3.5 h-3.5" />} label="访问" value={bszData?.pv ?? 0} />
+            <StatItem icon={<Users className="w-3.5 h-3.5" />} label="访客" value={bszData?.uv ?? 0} />
         </div>
     );
 }
