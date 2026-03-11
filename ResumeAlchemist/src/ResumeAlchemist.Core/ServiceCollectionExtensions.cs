@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
         services.Scan(scan => scan
             .FromAssemblyOf<ResumeAnalyzerService>()
             .AddClasses(classes => classes
-                .Where(t => t.Name.EndsWith("Service") && t.Name != "PdfExportService"))
+                .Where(t => t.Name.EndsWith("Service") && t.Name != "PdfExportService" && t.Name != "SiteStatsService"))
             .AsImplementedInterfaces()
             .WithScopedLifetime());
 

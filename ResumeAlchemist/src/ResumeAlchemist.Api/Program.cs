@@ -110,6 +110,9 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 // 注册 Core 层业务服务
 builder.Services.AddCoreServices();
 
+// 注册网站统计服务（Singleton，JSON 文件持久化）
+builder.Services.AddSingleton<ResumeAlchemist.Core.Interfaces.ISiteStatsService, ResumeAlchemist.Core.Services.SiteStatsService>();
+
 // 配置 FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();

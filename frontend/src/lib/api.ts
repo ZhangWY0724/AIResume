@@ -495,3 +495,19 @@ export const resumeApi = {
     return response.data;
   },
 };
+
+// --- 网站统计 API ---
+
+export interface SiteStatsResponse {
+  resumesUploaded: number;
+  resumesAnalyzed: number;
+  resumesPolished: number;
+}
+
+/**
+ * 获取网站使用统计数据
+ */
+export const getStats = async (): Promise<SiteStatsResponse> => {
+  const response = await api.get<SiteStatsResponse>('/Stats');
+  return response.data;
+};
