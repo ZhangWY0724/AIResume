@@ -12,14 +12,6 @@ function Footer() {
           <p className="text-slate-500">
             © {new Date().getFullYear()} Aikaid | 智简
           </p>
-          <a
-            href="https://github.com/ZhangWY0724/AIResume"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-slate-500 hover:text-blue-600 transition-colors duration-200 underline-offset-2 hover:underline"
-          >
-            GitHub
-          </a>
         </div>
 
         {/* 中间：统计数据 */}

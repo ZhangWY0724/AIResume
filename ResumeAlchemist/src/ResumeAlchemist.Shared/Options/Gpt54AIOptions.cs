@@ -27,7 +27,7 @@ public class Gpt54AIOptions
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "GPT-5.2";
+    public string Model { get; set; } = "gpt-5.2";
 
     /// <summary>
     /// 请求超时时间（秒）
