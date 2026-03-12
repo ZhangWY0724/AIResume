@@ -50,7 +50,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
   setSelectedIndustry: (industryId) => set({ selectedIndustry: industryId }),
 
   selectedModel: 'kilo',
-  setSelectedModel: (model) => set({ selectedModel: model }),
+  setSelectedModel: (model) => set({ selectedModel: model === 'gpt54' ? 'kilo' : model }),
 
   resumeContent: '',
   setResumeContent: (content) => set({ resumeContent: content }),
@@ -75,3 +75,4 @@ export const useResumeStore = create<ResumeState>((set) => ({
 
 // 导出哈希函数供外部使用
 export { hashContent };
+

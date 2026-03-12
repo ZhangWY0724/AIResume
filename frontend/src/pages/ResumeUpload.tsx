@@ -12,10 +12,10 @@ import { AIModelType } from '@/lib/api';
 type Tab = 'upload' | 'text';
 
 // AI 模型配置
-const AI_MODELS: { id: AIModelType; name: string; description: string }[] = [
-  { id: 'gpt54', name: 'GPT-5.2', description: 'OpenAI 兼容接口' },
+const AI_MODELS: { id: AIModelType; name: string; description: string; disabled?: boolean }[] = [
+  { id: 'gpt54', name: 'GPT-5.2', description: '当前暂不可用', disabled: true },
   { id: 'kilo', name: 'Kilo', description: 'Kilo AI（OpenAI 兼容网关）' },
-  { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型' },
+  { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型', disabled: true },
 ];
 
 export default function ResumeUpload() {
@@ -135,7 +135,7 @@ export default function ResumeUpload() {
               </div>
               <div className="flex gap-2">
                 {AI_MODELS.map((model) => {
-                  const isDisabled = model.id === 'gemini';
+                  const isDisabled = Boolean(model.disabled);
                   const isSelected = selectedModel === model.id;
 
                   return (
@@ -225,3 +225,5 @@ export default function ResumeUpload() {
     </div>
   );
 }
+
+
