@@ -13,7 +13,7 @@ type Tab = 'upload' | 'text';
 
 // AI 模型配置
 const AI_MODELS: { id: AIModelType; name: string; description: string; disabled?: boolean }[] = [
-  { id: 'gpt54', name: 'GPT-5.2', description: '当前暂不可用', disabled: true },
+  { id: 'gpt54', name: 'GPT-5.2', description: 'OpenAI 兼容 GPT-5.2 模型' },
   { id: 'kilo', name: 'Kilo', description: 'Kilo AI（OpenAI 兼容网关）' },
   { id: 'gemini', name: 'Gemini', description: 'Google Gemini 模型', disabled: true },
 ];

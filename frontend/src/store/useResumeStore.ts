@@ -50,7 +50,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
   setSelectedIndustry: (industryId) => set({ selectedIndustry: industryId }),
 
   selectedModel: 'kilo',
-  setSelectedModel: (model) => set({ selectedModel: model === 'gpt54' ? 'kilo' : model }),
+  setSelectedModel: (model) => set({ selectedModel: model }),
 
   resumeContent: '',
   setResumeContent: (content) => set({ resumeContent: content }),

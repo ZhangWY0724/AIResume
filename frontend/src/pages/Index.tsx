@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import HomeAnnouncement from '@/components/HomeAnnouncement';
 
 export default function Index() {
   const navigate = useNavigate();
@@ -200,6 +201,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+      <HomeAnnouncement />
 
       {/* --- Ambient Background (Fluid Gradients) --- */}
       <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-blue-400/20 rounded-full blur-[100px] animate-fluid pointer-events-none mix-blend-multiply filter" />
