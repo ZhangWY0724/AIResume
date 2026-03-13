@@ -3,10 +3,53 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ANNOUNCEMENT_VERSION = '20260312';
+const ANNOUNCEMENT_VERSION = '202603121';
 const ANNOUNCEMENT_STORAGE_KEY = `home_announcement_seen_${ANNOUNCEMENT_VERSION}`;
+const OWNER_WECHAT_IMAGE_PATH = '/wechat-contact.jpg';
 
-const announcementContent = {
+function OwnerContactTip() {
+  const [imageUnavailable, setImageUnavailable] = useState(false);
+
+  return (
+    <span className="relative inline-flex items-center">
+      <span className="group relative inline-flex items-center">
+        <span className="mx-1 text-slate-400">|</span>
+        <span className="cursor-help font-medium text-slate-800 underline decoration-slate-400 underline-offset-4">
+          站长
+        </span>
+
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-3 w-44 -translate-x-1/2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+          <span className="block rounded-lg border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10">
+            <span className="mb-2 block text-center text-xs font-medium text-slate-500">
+              微信联系
+            </span>
+
+            {imageUnavailable ? (
+              <span className="flex h-40 items-center justify-center rounded-md bg-slate-50 px-3 text-center text-xs leading-5 text-slate-500">
+                请将微信图片放到
+                <br />
+                <span className="font-mono text-[11px] text-slate-700">
+                  frontend/public/wechat-contact.jpg
+                </span>
+              </span>
+            ) : (
+              <img
+                src={OWNER_WECHAT_IMAGE_PATH}
+                alt="站长微信"
+                className="h-auto w-full rounded-md border border-slate-200"
+                onError={() => setImageUnavailable(true)}
+              />
+            )}
+          </span>
+
+          <span className="absolute left-1/2 top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-slate-200 bg-white" />
+        </span>
+      </span>
+    </span>
+  );
+}
+
+const announcementContent: { badge: string; title: string; date: string; paragraphs: ReactNode[] } = {
   badge: '站点公告',
   title: '模型使用说明',
   date: '2026 年 3 月 12 日',
@@ -14,15 +57,7 @@ const announcementContent = {
     'GPT-5.2 与 Kilo 模型均接入自公益站点，服务可能存在波动或临时不可用的情况。',
     <>
       如您愿意捐赠模型资源，可联系
-      <a
-        href="https://qm.qq.com/q/qSWb8b1qJa"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="ml-1 font-medium text-blue-600 hover:text-blue-700 hover:underline"
-      >
-        站长
-      </a>
-      。
+      <OwnerContactTip />。
     </>,
     '使用过程中如有问题、建议或体验反馈，欢迎随时交流。'
   ]
@@ -86,7 +121,7 @@ export default function HomeAnnouncement() {
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="w-full max-w-sm pointer-events-auto"
             >
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/12">
+              <div className="overflow-visible rounded-xl border border-slate-200 bg-white shadow-xl shadow-slate-900/12">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                   <div className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-700">
                     <Sparkles className="h-3.5 w-3.5 text-blue-600" />
@@ -115,7 +150,7 @@ export default function HomeAnnouncement() {
 
                   <div className="mt-3 space-y-3 text-[13px] leading-6 text-slate-700">
                     {announcementContent.paragraphs.map((paragraph, index) => (
-                      <p key={paragraphKeys[index]}>{paragraph as ReactNode}</p>
+                      <p key={paragraphKeys[index]}>{paragraph}</p>
                     ))}
                   </div>
                 </div>
