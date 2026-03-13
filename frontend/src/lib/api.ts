@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { ResumeEditorDraft } from '@/lib/resume-editor/types';
 
 // 自定义错误类型
 export class RateLimitError extends Error {
@@ -152,6 +153,17 @@ export interface PdfExportRequest {
   content: string;
   templateId?: string;
   fileName?: string;
+}
+
+export interface StructureResumeEditorRequest {
+  rawText: string;
+  polishedText?: string;
+}
+
+export interface ResumeEditorDraftResponse {
+  draftId: string;
+  draft: ResumeEditorDraft;
+  updatedAt: string;
 }
 
 // --- SSE Event Types ---
@@ -492,6 +504,40 @@ export const resumeApi = {
       responseType: 'blob',
       timeout: 60000,
     });
+    return response.data;
+  },
+
+  /**
+   * 将简历文本转换为模板编辑器草稿
+   */
+  structureEditorDraft: async (data: StructureResumeEditorRequest): Promise<ResumeEditorDraft> => {
+    const response = await api.post<ResumeEditorDraft>('/editor/structure', data, {
+      timeout: 120000,
+    });
+    return response.data;
+  },
+
+  /**
+   * 创建模板编辑器草稿
+   */
+  createEditorDraft: async (draft: ResumeEditorDraft): Promise<ResumeEditorDraftResponse> => {
+    const response = await api.post<ResumeEditorDraftResponse>('/editor/drafts', { draft });
+    return response.data;
+  },
+
+  /**
+   * 获取模板编辑器草稿
+   */
+  getEditorDraft: async (draftId: string): Promise<ResumeEditorDraftResponse> => {
+    const response = await api.get<ResumeEditorDraftResponse>(`/editor/drafts/${draftId}`);
+    return response.data;
+  },
+
+  /**
+   * 更新模板编辑器草稿
+   */
+  updateEditorDraft: async (draftId: string, draft: ResumeEditorDraft): Promise<ResumeEditorDraftResponse> => {
+    const response = await api.put<ResumeEditorDraftResponse>(`/editor/drafts/${draftId}`, { draft });
     return response.data;
   },
 };

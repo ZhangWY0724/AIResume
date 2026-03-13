@@ -180,6 +180,13 @@ export default function ResumePolish() {
             {isCompleted && (
               <>
                 <button
+                  onClick={() => navigate('/editor', { state: { sourceText: polishedContent } })}
+                  className="flex items-center gap-2 px-4 py-2 border rounded-full text-sm font-medium hover:bg-muted transition-all"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  模板编辑器
+                </button>
+                <button
                   onClick={handleCopy}
                   className="flex items-center gap-2 px-4 py-2 border rounded-full text-sm font-medium hover:bg-muted transition-all"
                 >

@@ -320,6 +320,13 @@ export default function AnalysisResult() {
                 一键 AI 润色
                 <ChevronRight className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => navigate('/editor')}
+                className="px-6 py-2 rounded-full border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-all text-sm font-medium flex items-center gap-2"
+              >
+                进入模板编辑器
+                <ChevronRight className="w-4 h-4" />
+              </button>
           </div>
         </div>
 

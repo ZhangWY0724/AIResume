@@ -5,6 +5,7 @@ import SelectIndustry from '@/pages/SelectIndustry';
 import ResumeUpload from '@/pages/ResumeUpload';
 import AnalysisResult from '@/pages/AnalysisResult';
 import ResumePolish from '@/pages/ResumePolish';
+import ResumeEditor from '@/pages/ResumeEditor';
 import { ToastContainer } from '@/components/Toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -19,6 +20,8 @@ function App() {
             <Route path="/upload" element={<ResumeUpload />} />
             <Route path="/result" element={<AnalysisResult />} />
             <Route path="/polish" element={<ResumePolish />} />
+            <Route path="/editor" element={<ResumeEditor />} />
+            <Route path="/editor-demo" element={<ResumeEditor />} />
           </Route>
         </Routes>
         <ToastContainer />
