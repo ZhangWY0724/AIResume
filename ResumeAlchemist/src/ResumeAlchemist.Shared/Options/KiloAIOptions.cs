@@ -30,7 +30,7 @@ public class KiloAIOptions
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "kilo/auto-free";
+    public string Model { get; set; } = "kilo/x-ai/grok-code-fast-1:optimized:free";
 
     /// <summary>
     /// 请求超时时间（秒）

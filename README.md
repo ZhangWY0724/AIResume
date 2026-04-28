@@ -69,14 +69,14 @@ AIResume/
 
 ## 配置
 
-后端需要配置智谱 AI API Key，在 `appsettings.json` 中设置：
+后端需要配置 Kilo AI API Key，在 `appsettings.json` 中设置：
 
 ```json
 {
-  "ZhipuAI": {
-    "BaseUrl": "https://open.bigmodel.cn/api/paas/v4/",
+  "KiloAI": {
+    "BaseUrl": "https://api.kilo.ai/api/gateway/",
     "ApiKey": "your-api-key",
-    "Model": "glm-4"
+    "Model": "kilo/x-ai/grok-code-fast-1:optimized:free"
   }
 }
 ```

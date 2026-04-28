@@ -192,7 +192,7 @@ public class KiloAIClient : IKiloAIClient, IAIClient
 internal class KiloChatRequest
 {
     [JsonPropertyName("model")]
-    public string Model { get; set; } = "kilo/auto-free";
+    public string Model { get; set; } = "kilo/x-ai/grok-code-fast-1:optimized:free";
 
     [JsonPropertyName("messages")]
     public List<KiloMessage> Messages { get; set; } = new();
