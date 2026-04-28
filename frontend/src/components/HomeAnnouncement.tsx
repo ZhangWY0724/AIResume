@@ -54,7 +54,7 @@ const announcementContent: { badge: string; title: string; date: string; paragra
   title: '模型使用说明',
   date: '2026 年 3 月 12 日',
   paragraphs: [
-    'GPT-5.2 与 Kilo 模型均接入自公益站点，服务可能存在波动或临时不可用的情况。',
+    'GPT-5.4 与 Kilo 模型均接入自公益站点，服务可能存在波动或临时不可用的情况。',
     <>
       如您愿意捐赠模型资源，可联系
       <OwnerContactTip />。

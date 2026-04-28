@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace ResumeAlchemist.Shared.Options;
 
 /// <summary>
-/// GPT-5.2 配置选项（OpenAI 兼容接口）
+/// GPT-5.4 配置选项（OpenAI Responses 兼容接口）
 /// </summary>
 public class Gpt54AIOptions
 {
@@ -16,7 +16,7 @@ public class Gpt54AIOptions
     /// API 基础地址
     /// </summary>
     [Required]
-    public string BaseUrl { get; set; } = "http://74.48.108.97:8317/";
+    public string BaseUrl { get; set; } = "http://74.48.108.97:8317/v1";
 
     /// <summary>
     /// API 密钥（可选：某些兼容网关允许匿名调用）
@@ -27,7 +27,7 @@ public class Gpt54AIOptions
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "gpt-5.2";
+    public string Model { get; set; } = "gpt-5.4";
 
     /// <summary>
     /// 请求超时时间（秒）

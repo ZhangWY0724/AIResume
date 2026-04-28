@@ -43,14 +43,12 @@ api.interceptors.response.use(
 
 // --- DTO Interfaces ---
 
-// AI 模型类型 (1 = Gemini, 2 = Kilo, 3 = GPT-5.2)
-export type AIModelType = 'gemini' | 'kilo' | 'gpt54';
+// AI 模型类型 (2 = Kilo, 3 = GPT-5.4)
+export type AIModelType = 'kilo' | 'gpt54';
 
 // 将前端模型类型转换为后端枚举值
 export const modelTypeToNumber = (type: AIModelType): number => {
   switch (type) {
-    case 'gemini':
-      return 1;
     case 'kilo':
       return 2;
     case 'gpt54':

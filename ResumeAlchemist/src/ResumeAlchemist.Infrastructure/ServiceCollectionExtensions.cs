@@ -20,17 +20,12 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         // 注册 Options 配置
-        services.AddOptions<GeminiAIOptions>()
-            .Bind(configuration.GetSection(GeminiAIOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
         // Kilo AI：保持可选（不 ValidateOnStart）
         services.AddOptions<KiloAIOptions>()
             .Bind(configuration.GetSection(KiloAIOptions.SectionName))
             .ValidateDataAnnotations();
 
-        // GPT-5.2：保持可选（不 ValidateOnStart）
+        // GPT-5.4：保持可选（不 ValidateOnStart）
         services.AddOptions<Gpt54AIOptions>()
             .Bind(configuration.GetSection(Gpt54AIOptions.SectionName))
             .ValidateDataAnnotations();
@@ -38,28 +33,20 @@ public static class ServiceCollectionExtensions
         // 注册 AI 客户端工厂
         services.AddSingleton<IAIClientFactory, AIClientFactory>();
 
-        // 配置 HttpClient for Gemini AI
-        var geminiOptions = configuration.GetSection(GeminiAIOptions.SectionName).Get<GeminiAIOptions>() ?? new GeminiAIOptions();
-        services.AddHttpClient<GeminiAIClient>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(geminiOptions.TimeoutSeconds);
-        });
-        services.AddScoped<IGeminiAIClient>(sp => sp.GetRequiredService<GeminiAIClient>());
-
         // 配置 HttpClient for Kilo AI（OpenAI 兼容网关）
         var kiloOptions = configuration.GetSection(KiloAIOptions.SectionName).Get<KiloAIOptions>() ?? new KiloAIOptions();
         services.AddHttpClient<KiloAIClient>(client =>
         {
-            client.BaseAddress = new Uri(kiloOptions.BaseUrl);
+            client.BaseAddress = new Uri(NormalizeBaseUrl(kiloOptions.BaseUrl));
             client.Timeout = TimeSpan.FromSeconds(kiloOptions.TimeoutSeconds);
         });
         services.AddScoped<IKiloAIClient>(sp => sp.GetRequiredService<KiloAIClient>());
 
-        // 配置 HttpClient for GPT-5.2（OpenAI 兼容）
+        // 配置 HttpClient for GPT-5.4（OpenAI Responses 兼容）
         var gpt54Options = configuration.GetSection(Gpt54AIOptions.SectionName).Get<Gpt54AIOptions>() ?? new Gpt54AIOptions();
         services.AddHttpClient<Gpt54AIClient>(client =>
         {
-            client.BaseAddress = new Uri(gpt54Options.BaseUrl);
+            client.BaseAddress = new Uri(NormalizeBaseUrl(gpt54Options.BaseUrl));
             client.Timeout = TimeSpan.FromSeconds(gpt54Options.TimeoutSeconds);
         });
         services.AddScoped<IGpt54AIClient>(sp => sp.GetRequiredService<Gpt54AIClient>());
@@ -73,5 +60,18 @@ public static class ServiceCollectionExtensions
             .WithScopedLifetime());
 
         return services;
+    }
+
+    private static string NormalizeBaseUrl(string baseUrl)
+    {
+        var normalized = (baseUrl ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return normalized;
+        }
+
+        return normalized.EndsWith("/", StringComparison.Ordinal)
+            ? normalized
+            : $"{normalized}/";
     }
 }

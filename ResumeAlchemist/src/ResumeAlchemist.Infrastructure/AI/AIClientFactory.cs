@@ -20,7 +20,6 @@ public class AIClientFactory : IAIClientFactory
     {
         return modelType switch
         {
-            AIModelType.Gemini => _serviceProvider.GetRequiredService<GeminiAIClient>(),
             AIModelType.Kilo => _serviceProvider.GetRequiredService<KiloAIClient>(),
             AIModelType.Gpt54 => _serviceProvider.GetRequiredService<Gpt54AIClient>(),
             _ => _serviceProvider.GetRequiredService<KiloAIClient>()

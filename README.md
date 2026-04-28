@@ -74,9 +74,9 @@ AIResume/
 ```json
 {
   "KiloAI": {
-    "BaseUrl": "https://api.kilo.ai/api/gateway/",
+    "BaseUrl": "https://api.kilo.ai/api/gateway",
     "ApiKey": "your-api-key",
-    "Model": "kilo/x-ai/grok-code-fast-1:optimized:free"
+    "Model": "x-ai/grok-code-fast-1:optimized:free"
   }
 }
 ```

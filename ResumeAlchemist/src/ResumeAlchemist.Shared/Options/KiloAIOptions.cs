@@ -17,7 +17,7 @@ public class KiloAIOptions
     /// </summary>
     [Required]
     [Url]
-    public string BaseUrl { get; set; } = "https://api.kilo.ai/api/gateway/";
+    public string BaseUrl { get; set; } = "https://api.kilo.ai/api/gateway";
 
     /// <summary>
     /// API 密钥
@@ -30,7 +30,7 @@ public class KiloAIOptions
     /// 模型名称
     /// </summary>
     [Required]
-    public string Model { get; set; } = "kilo/x-ai/grok-code-fast-1:optimized:free";
+    public string Model { get; set; } = "x-ai/grok-code-fast-1:optimized:free";
 
     /// <summary>
     /// 请求超时时间（秒）
