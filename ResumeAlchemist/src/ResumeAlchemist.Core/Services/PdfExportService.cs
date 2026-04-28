@@ -15,36 +15,47 @@ namespace ResumeAlchemist.Core.Services;
 /// </summary>
 public class PdfExportService : IPdfExportService
 {
-    // 配色方案 - 专业蓝色主题
-    private static readonly string PrimaryBlue = "#2B5797";       // 主蓝色（标题、姓名）
-    private static readonly string TextColor = "#333333";         // 正文黑色
-    private static readonly string TextMuted = "#666666";         // 次要文字
+    private static readonly string PrimaryBlue = "#183B6B";
+    private static readonly string AccentBlue = "#2E6DB4";
+    private static readonly string TextColor = "#243042";
+    private static readonly string TextMuted = "#5F6B7A";
+    private static readonly string DividerColor = "#D8E2F0";
+    private static readonly Regex PhoneRegex = new(
+        @"(?<!\d)(?:\+?86[-\s]?)?1[3-9]\d{9}(?!\d)",
+        RegexOptions.Compiled);
 
     static PdfExportService()
     {
-        QuestPDF.Settings.License = LicenseType.Community;
+        PdfFontConfiguration.Configure();
     }
 
     public byte[] GeneratePdf(PdfExportRequest request)
     {
         var markdown = request.Content;
         var sections = ParseMarkdownToSections(markdown);
+        var resumeLayout = BuildResumeLayout(sections, request.FileName);
 
         var document = Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.MarginTop(35);
-                page.MarginBottom(25);
-                page.MarginHorizontal(40);
-                page.DefaultTextStyle(x => x.FontSize(10).FontColor(TextColor).LineHeight(1.5f));
+                page.MarginTop(28);
+                page.MarginBottom(24);
+                page.MarginHorizontal(34);
+                page.DefaultTextStyle(x => x
+                    .FontFamily(PdfFontConfiguration.FontFamilies)
+                    .FontSize(10.5f)
+                    .FontColor(TextColor)
+                    .LineHeight(1.55f));
 
-                page.Content().Column(column =>
+                page.Header().Element(header => RenderPageHeader(header, resumeLayout));
+
+                page.Content().PaddingTop(14).Column(column =>
                 {
                     column.Spacing(4);
 
-                    foreach (var section in sections)
+                    foreach (var section in resumeLayout.BodySections)
                     {
                         RenderSection(column, section);
                     }
@@ -53,6 +64,26 @@ public class PdfExportService : IPdfExportService
         });
 
         return document.GeneratePdf();
+    }
+
+    private void RenderPageHeader(IContainer container, ResumeLayout resumeLayout)
+    {
+        container.Column(column =>
+        {
+            column.Item().AlignCenter().Text(resumeLayout.Name)
+                .FontSize(24)
+                .Bold()
+                .FontColor(PrimaryBlue);
+
+            foreach (var line in resumeLayout.HeaderLines)
+            {
+                column.Item().PaddingTop(3).AlignCenter().Text(NormalizeHeaderLine(line))
+                    .FontSize(9.5f)
+                    .FontColor(TextMuted);
+            }
+
+            column.Item().PaddingTop(10).LineHorizontal(1f).LineColor(DividerColor);
+        });
     }
 
     private void RenderSection(ColumnDescriptor column, ResumeSection section)
@@ -82,60 +113,67 @@ public class PdfExportService : IPdfExportService
 
     private void RenderTitle(ColumnDescriptor column, ResumeSection section)
     {
-        // 姓名 - 居中蓝色大字
-        column.Item().PaddingBottom(12).AlignCenter().Text(section.Content)
-            .FontSize(26)
-            .Bold()
-            .FontColor(PrimaryBlue);
+        return;
     }
 
     private void RenderHeader(ColumnDescriptor column, ResumeSection section)
     {
-        // 分区标题 - 蓝色文字 + 蓝色下划线
-        column.Item().PaddingTop(16).PaddingBottom(8).Column(col =>
+        column.Item().PaddingTop(14).PaddingBottom(8).Row(row =>
         {
-            col.Item().Text(section.Content)
-                .FontSize(14)
+            row.AutoItem().Text(section.Content)
+                .FontSize(12.5f)
                 .Bold()
                 .FontColor(PrimaryBlue);
 
-            col.Item().PaddingTop(4).LineHorizontal(1.5f).LineColor(PrimaryBlue);
+            row.RelativeItem()
+                .PaddingLeft(10)
+                .AlignMiddle()
+                .LineHorizontal(1f)
+                .LineColor(DividerColor);
         });
     }
 
     private void RenderSubHeader(ColumnDescriptor column, ResumeSection section)
     {
-        // 子标题（如 "内容："、"业绩："）- 加粗
-        column.Item().PaddingTop(8).PaddingBottom(2).Text(section.Content)
-            .FontSize(10)
+        column.Item().PaddingTop(7).PaddingBottom(2).Text(section.Content)
+            .FontSize(10.2f)
             .Bold()
-            .FontColor(TextColor);
+            .FontColor(AccentBlue);
     }
 
     private void RenderCompanyLine(ColumnDescriptor column, ResumeSection section)
     {
-        // 公司行：公司名 + 职位 ... 日期右对齐
-        column.Item().PaddingTop(10).PaddingBottom(4).Row(row =>
+        column.Item().PaddingTop(9).PaddingBottom(3).Row(row =>
         {
             row.RelativeItem().Text(text =>
             {
-                text.Span(section.Content)
-                    .FontSize(11)
-                    .Bold()
-                    .FontColor(TextColor);
-
                 if (!string.IsNullOrEmpty(section.Position))
                 {
-                    text.Span($"    {section.Position}")
-                        .FontSize(10)
+                    text.Span(section.Position)
+                        .FontSize(11.2f)
+                        .Bold()
                         .FontColor(TextColor);
+
+                    if (!string.IsNullOrEmpty(section.Content))
+                    {
+                        text.Span("  ·  ")
+                            .FontSize(10f)
+                            .FontColor(TextMuted);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(section.Content))
+                {
+                    text.Span(section.Content)
+                        .FontSize(10.3f)
+                        .FontColor(TextMuted);
                 }
             });
 
             if (!string.IsNullOrEmpty(section.DateRange))
             {
-                row.AutoItem().AlignRight().Text(section.DateRange)
-                    .FontSize(10)
+                row.AutoItem().PaddingLeft(12).AlignRight().Text(section.DateRange)
+                    .FontSize(9.5f)
                     .FontColor(TextMuted);
             }
         });
@@ -143,20 +181,18 @@ public class PdfExportService : IPdfExportService
 
     private void RenderParagraph(ColumnDescriptor column, ResumeSection section)
     {
-        // 检查是否是个人信息行（包含 | 分隔符）
         if (section.Content.Contains('|'))
         {
-            // 个人信息行 - 居中显示
             column.Item().PaddingVertical(2).AlignCenter().Text(section.Content)
-                .FontSize(10)
+                .FontSize(9.5f)
                 .FontColor(TextMuted);
         }
         else
         {
-            column.Item().PaddingVertical(2).Text(section.Content)
-                .FontSize(10)
+            column.Item().PaddingBottom(2).Text(section.Content)
+                .FontSize(10.3f)
                 .FontColor(TextColor)
-                .LineHeight(1.6f);
+                .LineHeight(1.7f);
         }
     }
 
@@ -169,19 +205,80 @@ public class PdfExportService : IPdfExportService
             {
                 listCol.Item().PaddingVertical(2).Row(row =>
                 {
-                    // 数字编号
-                    row.AutoItem().Width(18).Text($"{index}.")
-                        .FontSize(10)
-                        .FontColor(TextColor);
+                    if (section.IsOrdered)
+                    {
+                        row.AutoItem().Width(18).Text($"{index}.")
+                            .FontSize(10f)
+                            .FontColor(AccentBlue)
+                            .Bold();
+                    }
+                    else
+                    {
+                        row.AutoItem().Width(14).PaddingTop(4).Text("•")
+                            .FontSize(12f)
+                            .FontColor(AccentBlue);
+                    }
 
                     row.RelativeItem().Text(item)
-                        .FontSize(10)
+                        .FontSize(10.2f)
                         .FontColor(TextColor)
-                        .LineHeight(1.6f);
+                        .LineHeight(1.65f);
                 });
                 index++;
             }
         });
+    }
+
+    private ResumeLayout BuildResumeLayout(List<ResumeSection> sections, string? fallbackName)
+    {
+        var bodySections = new List<ResumeSection>();
+        var headerLines = new List<string>();
+        var name = string.IsNullOrWhiteSpace(fallbackName) ? "简历" : fallbackName;
+        var titleConsumed = false;
+        var encounteredBodyHeader = false;
+
+        foreach (var section in sections)
+        {
+            if (!titleConsumed && section.Type == SectionType.Title)
+            {
+                titleConsumed = true;
+                if (!string.IsNullOrWhiteSpace(section.Content))
+                {
+                    name = section.Content;
+                }
+                continue;
+            }
+
+            if (section.Type == SectionType.Header)
+            {
+                encounteredBodyHeader = true;
+            }
+
+            if (!encounteredBodyHeader && section.Type == SectionType.Paragraph && IsHeaderMetaLine(section.Content))
+            {
+                headerLines.Add(section.Content);
+                continue;
+            }
+
+            bodySections.Add(section);
+        }
+
+        return new ResumeLayout
+        {
+            Name = name,
+            HeaderLines = headerLines,
+            BodySections = bodySections
+        };
+    }
+
+    private static bool IsHeaderMetaLine(string text)
+    {
+        return text.Contains('|') || text.Contains('@') || PhoneRegex.IsMatch(text);
+    }
+
+    private static string NormalizeHeaderLine(string line)
+    {
+        return Regex.Replace(line.Trim(), @"\s*\|\s*", "  ·  ");
     }
 
     private List<ResumeSection> ParseMarkdownToSections(string markdown)
@@ -292,7 +389,8 @@ public class PdfExportService : IPdfExportService
                     sections.Add(new ResumeSection
                     {
                         Type = SectionType.List,
-                        ListItems = items
+                        ListItems = items,
+                        IsOrdered = list.IsOrdered
                     });
                 }
                 break;
@@ -417,6 +515,7 @@ public class PdfExportService : IPdfExportService
         public string Position { get; set; } = string.Empty;
         public string DateRange { get; set; } = string.Empty;
         public List<string> ListItems { get; set; } = new();
+        public bool IsOrdered { get; set; }
     }
 
     private enum SectionType
@@ -427,5 +526,12 @@ public class PdfExportService : IPdfExportService
         Paragraph,
         List,
         CompanyLine
+    }
+
+    private sealed class ResumeLayout
+    {
+        public string Name { get; set; } = "简历";
+        public List<string> HeaderLines { get; set; } = new();
+        public List<ResumeSection> BodySections { get; set; } = new();
     }
 }

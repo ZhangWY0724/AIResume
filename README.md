@@ -47,6 +47,9 @@ dotnet run
 
 后端 API 文档访问 http://localhost:5000/swagger
 
+Linux 部署时，PDF 导出默认随应用发布 `Noto Sans CJK SC` 中文字体到 `Resources/Fonts`，避免中文在 PDF 中显示为方块。
+如需额外挂载自定义字体目录，可设置环境变量 `RESUME_ALCHEMIST_PDF_FONT_DIRS`。
+
 ## 项目结构
 
 ```

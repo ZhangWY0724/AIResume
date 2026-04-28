@@ -18,4 +18,11 @@
     <ProjectReference Include="..\ResumeAlchemist.Shared\ResumeAlchemist.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Resources\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

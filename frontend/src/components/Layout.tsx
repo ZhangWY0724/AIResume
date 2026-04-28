@@ -34,15 +34,14 @@ function Footer() {
 export default function Layout() {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const isEditor = location.pathname.startsWith('/editor');
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans antialiased">
-      {!isHome && !isEditor && <Steps />}
+      {!isHome && <Steps />}
       <main className="flex-1">
         <Outlet />
       </main>
-      {!isEditor && <Footer />}
+      <Footer />
     </div>
   );
 }
